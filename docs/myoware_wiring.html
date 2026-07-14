@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MyoWare 2.0 → ESP32 · Wiring</title>
+<style>
+  :root {
+    --bg: #ece4d2;
+    --paper: #fdfaf3;
+    --paper-2: #f5edd6;
+    --ink: #2c3e50;
+    --muted: #7f8c8d;
+    --line: #ecdbb1;
+    --power: #c0392b;
+    --gnd: #2c3e50;
+    --ch1: #d35400;
+    --ch2: #2980b9;
+    --myo: #2c3e50;
+    --myo-pcb: #34495e;
+    --skin: #f0c39a;
+    --skin-edge: #bf8a5d;
+    --warn: #d68910;
+    --ok: #16a085;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+  }
+  .wrap {
+    max-width: 1480px; margin: 0 auto;
+    background: var(--paper); border-radius: 14px;
+    padding: 28px 32px 32px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
+  .sub { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 0; }
+  h2 {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.4px; color: var(--muted);
+    margin: 28px 0 12px;
+  }
+  .stage {
+    background: var(--paper-2);
+    border-radius: 12px;
+    padding: 16px 20px 20px;
+    margin-bottom: 12px;
+  }
+  .stage svg { display: block; width: 100%; height: auto; }
+  .stage .caption { margin-top: 6px; color: var(--muted); font-size: 12.5px; }
+
+  svg text { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; fill: var(--ink); }
+  svg .label-bold { font-size: 13px; font-weight: 600; }
+  svg .label { font-size: 12.5px; }
+  svg .note { font-size: 11px; fill: var(--muted); }
+  svg .pin { font-family: "SF Mono", Menlo, monospace; font-size: 10.5px; }
+  svg .pin-bold { font-family: "SF Mono", Menlo, monospace; font-size: 10.5px; font-weight: 600; }
+  svg .panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; fill: var(--muted); }
+
+  .pintable { background: var(--paper-2); border-radius: 12px; padding: 16px 20px; margin-top: 8px; }
+  .pintable table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pintable th, .pintable td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  .pintable th { font-weight: 600; color: var(--muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  .pintable td.pin { font-family: "SF Mono", Menlo, monospace; font-weight: 600; }
+  .pintable .swatch { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 8px; }
+
+  .warn-box {
+    background: #fdecea; border-left: 4px solid var(--power);
+    padding: 12px 16px; margin-top: 14px; border-radius: 4px; font-size: 13px;
+  }
+  .ok-box {
+    background: rgba(22,160,133,0.10); border-left: 4px solid var(--ok);
+    padding: 12px 16px; margin-top: 14px; border-radius: 4px; font-size: 13px;
+  }
+
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px;
+  }
+  .compare .col {
+    background: var(--paper-2);
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+  .compare h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+  .compare table { width: 100%; font-size: 12.5px; border-collapse: collapse; }
+  .compare td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  .compare .old h3 { color: var(--muted); }
+  .compare .new h3 { color: var(--ok); }
+  @media (max-width: 760px) { .compare { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>MyoWare 2.0 → ESP32 · Wiring</h1>
+  <p class="sub">Drop-in replacement for the AD8232 setup. Three wires per sensor. No leads-off detection, no cable jack, no LO+/LO− on the ESP32. Same packet format, same Pi-side code.</p>
+  <hr>
+
+  <div class="ok-box" style="margin-top: 16px;">
+    <strong>Recommended for v1: 1 MyoWare only (CH1 / GPIO 34).</strong>
+    For open/close control via <code>predict_open_close.py</code>, a single sensor on the forearm flexor is enough. Flex = close, relax = open. Wire only the top sensor in the diagram below — the CH2 connections (GPIO 35, dashed below) are optional and only needed if you later add a 2nd MyoWare for distinct open/close commands.
+  </div>
+</header>
+
+<h2>1 · The change at a glance</h2>
+
+<div class="compare">
+  <div class="col old">
+    <h3>Was — AD8232 (per channel)</h3>
+    <table>
+      <tr><td><code>3.3V</code></td><td>→ ESP32 3V3</td></tr>
+      <tr><td><code>GND</code></td><td>→ ESP32 GND</td></tr>
+      <tr><td><code>OUTPUT</code></td><td>→ ESP32 GPIO 34 / 35</td></tr>
+      <tr><td><code>LO+</code></td><td>→ ESP32 GPIO 25 / 26</td></tr>
+      <tr><td><code>LO−</code></td><td>→ ESP32 GPIO 27 (CH1 only)</td></tr>
+      <tr><td colspan="2" style="color:var(--muted);font-style:italic;">3.5 mm jack → electrode cable → snap leads</td></tr>
+    </table>
+  </div>
+  <div class="col new">
+    <h3>Now — MyoWare 2.0 + Cable Shield (per channel)</h3>
+    <table>
+      <tr><td><code>VIN</code></td><td>→ ESP32 3V3</td></tr>
+      <tr><td><code>GND</code></td><td>→ ESP32 GND</td></tr>
+      <tr><td><code>SIG</code></td><td>→ ESP32 GPIO 34 / 35</td></tr>
+      <tr><td colspan="2" style="color:var(--ok);">no LO+, no LO−</td></tr>
+      <tr><td colspan="2" style="color:var(--muted);font-style:italic;">Cable Shield → 3 snap leads → electrodes</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="ok-box">
+  <strong>Net effect:</strong> GPIO 25, 26, 27 are now <em>unused</em> on the ESP32 (they were leads-off detection pins). Your FSR wiring on GPIO 33 / 36 / 39 stays exactly the same. The 54-byte UDP packet format is unchanged.
+</div>
+
+<!-- ─── WIRING DIAGRAM ───────────────────────────────── -->
+<h2>2 · Wiring map · MyoWare 2.0 × 2 → ESP32</h2>
+
+<div class="stage">
+<svg viewBox="0 0 1400 720" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- ===== MyoWare #1 (top) ===== -->
+  <g transform="translate(60,60)">
+    <text x="100" y="-12" class="panel-title">MYOWARE 2.0 · CH1 (flexor)</text>
+    <!-- PCB rectangle -->
+    <rect width="280" height="140" rx="10" fill="var(--myo)" stroke="#1a252f" stroke-width="1.5"/>
+    <!-- Module label -->
+    <rect x="80" y="20" width="120" height="40" rx="3" fill="var(--myo-pcb)"/>
+    <text x="140" y="40" text-anchor="middle" class="label-bold" fill="#fdfaf3">MyoWare 2.0</text>
+    <text x="140" y="54" text-anchor="middle" class="pin" fill="#bdc3c7">Muscle Sensor</text>
+
+    <!-- Snap connectors on top (where the Cable Shield attaches) -->
+    <circle cx="36" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <circle cx="140" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <circle cx="244" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <text x="36"  y="3" text-anchor="middle" class="pin" fill="var(--ch1)">MID</text>
+    <text x="140" y="3" text-anchor="middle" class="pin" fill="var(--ch1)">END</text>
+    <text x="244" y="3" text-anchor="middle" class="pin" fill="#7f8c8d">REF</text>
+    <text x="140" y="-22" text-anchor="middle" class="note">Cable Shield snaps onto these 3 studs</text>
+
+    <!-- Bottom header (V+, GND, RAW, SIG) -->
+    <circle cx="40"  cy="140" r="5" fill="var(--power)" stroke="#fdfaf3"/>
+    <text x="40"  y="158" text-anchor="middle" class="pin-bold" fill="var(--power)">V+</text>
+    <circle cx="105" cy="140" r="5" fill="var(--gnd)" stroke="#fdfaf3"/>
+    <text x="105" y="158" text-anchor="middle" class="pin-bold" fill="#fdfaf3">GND</text>
+    <circle cx="170" cy="140" r="5" fill="#7f8c8d" stroke="#fdfaf3" opacity="0.5"/>
+    <text x="170" y="158" text-anchor="middle" class="pin" fill="#bdc3c7" opacity="0.7">RAW</text>
+    <circle cx="240" cy="140" r="5" fill="var(--ch1)" stroke="#fdfaf3"/>
+    <text x="240" y="158" text-anchor="middle" class="pin-bold" fill="var(--ch1)">SIG</text>
+
+    <!-- Caption -->
+    <text x="140" y="186" text-anchor="middle" class="note">SIG = rectified + smoothed envelope (read this for thresholding)</text>
+    <text x="140" y="202" text-anchor="middle" class="note">RAW = raw differential EMG (use if you want the full waveform later)</text>
+  </g>
+
+  <!-- ===== MyoWare #2 (bottom) ===== -->
+  <g transform="translate(60,400)">
+    <text x="100" y="-12" class="panel-title">MYOWARE 2.0 · CH2 (extensor)</text>
+    <rect width="280" height="140" rx="10" fill="var(--myo)" stroke="#1a252f" stroke-width="1.5"/>
+    <rect x="80" y="20" width="120" height="40" rx="3" fill="var(--myo-pcb)"/>
+    <text x="140" y="40" text-anchor="middle" class="label-bold" fill="#fdfaf3">MyoWare 2.0</text>
+    <text x="140" y="54" text-anchor="middle" class="pin" fill="#bdc3c7">Muscle Sensor</text>
+
+    <circle cx="36" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <circle cx="140" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <circle cx="244" cy="14" r="6" fill="#7f8c8d" stroke="#1a252f"/>
+    <text x="36"  y="3" text-anchor="middle" class="pin" fill="var(--ch2)">MID</text>
+    <text x="140" y="3" text-anchor="middle" class="pin" fill="var(--ch2)">END</text>
+    <text x="244" y="3" text-anchor="middle" class="pin" fill="#7f8c8d">REF</text>
+
+    <circle cx="40"  cy="140" r="5" fill="var(--power)" stroke="#fdfaf3"/>
+    <text x="40"  y="158" text-anchor="middle" class="pin-bold" fill="var(--power)">V+</text>
+    <circle cx="105" cy="140" r="5" fill="var(--gnd)" stroke="#fdfaf3"/>
+    <text x="105" y="158" text-anchor="middle" class="pin-bold" fill="#fdfaf3">GND</text>
+    <circle cx="170" cy="140" r="5" fill="#7f8c8d" stroke="#fdfaf3" opacity="0.5"/>
+    <text x="170" y="158" text-anchor="middle" class="pin" fill="#bdc3c7" opacity="0.7">RAW</text>
+    <circle cx="240" cy="140" r="5" fill="var(--ch2)" stroke="#fdfaf3"/>
+    <text x="240" y="158" text-anchor="middle" class="pin-bold" fill="var(--ch2)">SIG</text>
+  </g>
+
+  <!-- ===== ESP32 (right) ===== -->
+  <g transform="translate(820,140)">
+    <rect width="200" height="440" rx="12" fill="var(--myo)" stroke="#1a252f" stroke-width="1.5"/>
+    <text x="100" y="28" text-anchor="middle" class="label-bold" fill="#fdfaf3">ESP32 DevKit V1</text>
+    <rect x="80" y="40" width="40" height="14" rx="2" fill="#95a5a6"/>
+    <text x="100" y="68" text-anchor="middle" class="note" fill="#95a5a6">USB-C</text>
+
+    <!-- Used pins -->
+    <circle cx="0" cy="100" r="6" fill="var(--power)" stroke="#fdfaf3" stroke-width="1.2"/>
+    <text x="14" y="104" class="pin-bold" fill="#fdfaf3">3.3V</text>
+
+    <circle cx="0" cy="130" r="6" fill="var(--gnd)" stroke="#fdfaf3" stroke-width="1.2"/>
+    <text x="14" y="134" class="pin-bold" fill="#fdfaf3">GND</text>
+
+    <circle cx="0" cy="195" r="6" fill="var(--ch1)" stroke="#fdfaf3" stroke-width="1.2"/>
+    <text x="14" y="199" class="pin-bold" fill="#fdfaf3">GPIO 34 · ADC1_CH6</text>
+    <text x="14" y="213" class="pin" fill="#bdc3c7">CH1 — flexor SIG</text>
+
+    <circle cx="0" cy="245" r="6" fill="var(--ch2)" stroke="#fdfaf3" stroke-width="1.2"/>
+    <text x="14" y="249" class="pin-bold" fill="#fdfaf3">GPIO 35 · ADC1_CH7</text>
+    <text x="14" y="263" class="pin" fill="#bdc3c7">CH2 — extensor SIG</text>
+
+    <!-- FSR pins (still used, shown ghosted-bright since they're separate concern) -->
+    <text x="100" y="304" text-anchor="middle" class="note" fill="#bdc3c7">(FSR pins for fingertip force)</text>
+    <circle cx="0" cy="325" r="5" fill="#16a085" stroke="#fdfaf3"/>
+    <text x="14" y="329" class="pin" fill="#bdc3c7">GPIO 33 · FSR thumb</text>
+    <circle cx="0" cy="345" r="5" fill="#16a085" stroke="#fdfaf3"/>
+    <text x="14" y="349" class="pin" fill="#bdc3c7">GPIO 36 · FSR index</text>
+    <circle cx="0" cy="365" r="5" fill="#16a085" stroke="#fdfaf3"/>
+    <text x="14" y="369" class="pin" fill="#bdc3c7">GPIO 39 · FSR middle</text>
+
+    <!-- Freed pins (LO+/LO-) -->
+    <text x="100" y="395" text-anchor="middle" class="note" fill="#bdc3c7">(pins freed when leaving AD8232)</text>
+    <g opacity="0.45">
+      <circle cx="0" cy="412" r="4" fill="#7f8c8d"/>
+      <text x="14" y="416" class="pin" fill="#bdc3c7">GPIO 25 · free</text>
+      <circle cx="0" cy="426" r="4" fill="#7f8c8d"/>
+      <text x="14" y="430" class="pin" fill="#bdc3c7">GPIO 26 · free</text>
+      <circle cx="0" cy="440" r="4" fill="#7f8c8d"/>
+      <text x="14" y="444" class="pin" fill="#bdc3c7">GPIO 27 · free</text>
+    </g>
+  </g>
+
+  <!-- ===== Wires from each MyoWare to ESP32 ===== -->
+  <!-- CH1 wires: MyoWare#1 bottom (group origin 60,60; relative pins at y=140)
+       absolute coords:
+         V+   at (60+40 , 60+140)  = (100, 200)
+         GND  at (60+105, 60+140)  = (165, 200)
+         SIG  at (60+240, 60+140)  = (300, 200)
+       ESP32 group origin (820,140), pads at x=820:
+         3.3V at (820, 140+100=240)
+         GND  at (820, 140+130=270)
+         34   at (820, 140+195=335)
+       -->
+  <!-- V+ shared rail: CH1 V+ down then right -->
+  <path d="M 100 200 V 240 M 100 240 H 820"
+        stroke="var(--power)" stroke-width="2.6" fill="none"/>
+  <!-- GND shared rail -->
+  <path d="M 165 200 V 270 M 165 270 H 820"
+        stroke="var(--gnd)" stroke-width="2.6" fill="none"/>
+  <!-- SIG #1 -->
+  <path d="M 300 200 V 335 M 300 335 H 820"
+        stroke="var(--ch1)" stroke-width="2.6" fill="none"/>
+
+  <!-- CH2 wires from MyoWare#2 (group origin 60,400; bottom pins at y=540)
+         V+   at (100, 540)
+         GND  at (165, 540)
+         SIG  at (300, 540)
+       ESP32 GPIO 35 at (820, 140+245=385) -->
+  <!-- V+ joins the rail at 100,240 (back up) -->
+  <path d="M 100 540 V 240" stroke="var(--power)" stroke-width="2.6" fill="none" stroke-dasharray="0"/>
+  <!-- GND joins rail -->
+  <path d="M 165 540 V 270" stroke="var(--gnd)" stroke-width="2.6" fill="none"/>
+  <!-- SIG #2 -->
+  <path d="M 300 540 H 380 V 385 H 820" stroke="var(--ch2)" stroke-width="2.6" fill="none"/>
+
+  <!-- Wire labels -->
+  <text x="450" y="232" class="pin-bold" fill="var(--power)">3.3 V (shared)</text>
+  <text x="450" y="262" class="pin-bold" fill="var(--gnd)">GND (shared)</text>
+  <text x="600" y="327" class="pin-bold" fill="var(--ch1)">CH1 SIG → GPIO 34</text>
+  <text x="600" y="377" class="pin-bold" fill="var(--ch2)">CH2 SIG → GPIO 35</text>
+
+  <!-- Cable Shield + electrode hint (left) -->
+  <g transform="translate(60,235)">
+    <text x="0" y="0" class="panel-title">ELECTRODES (Cable Shield)</text>
+    <text x="0" y="16" class="note">Cable Shield snaps onto the 3 studs on top of each Muscle</text>
+    <text x="0" y="30" class="note">Sensor and breaks out to 3 colour-coded snap leads:</text>
+    <g transform="translate(0,48)">
+      <circle cx="6" cy="6" r="6" fill="var(--ch1)"/><text x="20" y="11" class="pin" fill="var(--ch1)">MID → over muscle belly</text>
+      <circle cx="6" cy="26" r="6" fill="var(--ch1)"/><text x="20" y="31" class="pin" fill="var(--ch1)">END → 2 cm distal along fibre</text>
+      <circle cx="6" cy="46" r="6" fill="#7f8c8d"/><text x="20" y="51" class="pin" fill="var(--muted)">REF → bony spot (elbow / wrist)</text>
+    </g>
+    <text x="0" y="125" class="note" font-style="italic">Use disposable Ag/AgCl gel pads with snap connectors.</text>
+    <text x="0" y="140" class="note" font-style="italic">Two MyoWares each have their own REF — that's fine.</text>
+  </g>
+
+</svg>
+<div class="caption">Two MyoWare 2.0 modules, each with a Cable Shield carrying snap leads to disposable electrodes on the forearm. Three wires per sensor go to the ESP32: V+, GND, SIG. Power + ground are shared rails (one each).</div>
+</div>
+
+<!-- ─── PIN TABLE ───────────────────────────────────── -->
+<h2>3 · Copy-paste connection table</h2>
+
+<div class="pintable">
+  <table>
+    <thead>
+      <tr><th>Wire colour</th><th>From</th><th>To</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background: var(--power)"></span>red</td>
+        <td class="pin">MyoWare #1 · V+</td>
+        <td class="pin">ESP32 · 3V3</td>
+        <td>shared rail to MyoWare #2 V+</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background: var(--gnd)"></span>black</td>
+        <td class="pin">MyoWare #1 · GND</td>
+        <td class="pin">ESP32 · GND</td>
+        <td>shared rail to MyoWare #2 GND</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background: var(--ch1)"></span>orange</td>
+        <td class="pin">MyoWare #1 · SIG</td>
+        <td class="pin">ESP32 · GPIO 34</td>
+        <td>flexor (close-hand) channel</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background: var(--ch2)"></span>blue</td>
+        <td class="pin">MyoWare #2 · SIG</td>
+        <td class="pin">ESP32 · GPIO 35</td>
+        <td>extensor (open-hand) channel</td>
+      </tr>
+      <tr>
+        <td>—</td>
+        <td class="pin">MyoWare · RAW (both)</td>
+        <td class="pin">— (not wired)</td>
+        <td>RAW is the un-rectified EMG; only needed if you switch back to the full CNN pipeline. For open/close demo use SIG only.</td>
+      </tr>
+      <tr>
+        <td>—</td>
+        <td class="pin">Cable Shield snap leads (each MyoWare)</td>
+        <td class="pin">— (skin)</td>
+        <td>MID → muscle belly, END → 2 cm distal along the fibre, REF → bony spot</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="warn-box">
+  <strong>⚠ Don't share REF between the two MyoWare sensors</strong> unless you also add the MyoWare 2.0 <em>Link Shield</em>. Each sensor expects its own reference electrode. Two REF pads on the same bony spot (e.g. one on each side of the elbow) is fine and what most people do.
+</div>
+
+<p style="margin-top: 14px; font-size: 12px; color: var(--muted);">
+  This page replaces Panel B2 of <code>electronics_setup.html</code> when you switch to MyoWare 2.0.
+  The Pi-side software (filter chain, ring buffer, dashboard) is unchanged — packet format is still 54 bytes.
+  Run <code>python predict_open_close.py</code> for the simple threshold-based open/close controller (no trained model needed).
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EMG Hand · Live Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+<style>
+  :root {
+    --bg: #08101c;
+    --panel: #111a2c;
+    --panel-2: #182338;
+    --line: #1f2c47;
+    --text: #d8e1ed;
+    --muted: #6e7e96;
+    --hr: #00ff88;
+    --hrv: #ffaa33;
+    --rr: #4cc9ff;
+    --resp: #ff66cc;
+    --ecg: #00ff88;
+    --emg1: #ff9744;     /* orange — CH1 flexor */
+    --emg2: #4cc9ff;     /* cyan   — CH2 extensor */
+    --gesture: #00ff88;
+    --warn: #ff5566;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    padding: 14px 18px 18px;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 4px 14px; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: 0.4px; }
+  header h1 .accent { color: var(--hr); font-weight: 600; }
+
+  .conn {
+    font-family: "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .conn .dot { width: 9px; height: 9px; border-radius: 50%; background: #444c5c; }
+  .conn.live .dot { background: var(--hr); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(0,255,136,.55); }
+    70%  { box-shadow: 0 0 0 9px rgba(0,255,136,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,255,136,0); }
+  }
+
+  /* ─── Generic card ─────────────────────────────────────── */
+  .card {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 12px 16px 12px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .card .lbl {
+    font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .card .plot { width: 100%; }
+
+  /* ─── Gesture row (current + confidence) ───────────────── */
+  .gesture-row {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 700px) { .gesture-row { grid-template-columns: 1fr; } }
+
+  .gesture-card {
+    background: var(--panel); border-radius: 12px;
+    padding: 18px 24px 18px; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: 200px;
+  }
+  .gesture-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--gesture);
+  }
+  .gesture-card .lbl {
+    font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .gesture-card .val {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+    font-weight: 700; line-height: 1; color: var(--gesture);
+    font-size: clamp(56px, 8vw, 96px);
+    margin-top: 8px;
+    text-transform: lowercase;
+    transition: color 0.18s ease;
+  }
+  .gesture-card.idle .val { color: var(--muted); }
+  .gesture-card .sub {
+    font-family: "SF Mono", Menlo, monospace;
+    color: var(--muted); font-size: 12px; margin-top: 12px;
+  }
+
+  /* ─── Confidence bars ──────────────────────────────────── */
+  .conf-card {
+    background: var(--panel); border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .conf-card .lbl {
+    font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .conf-rows { display: flex; flex-direction: column; gap: 9px; }
+  .conf-row {
+    display: grid; grid-template-columns: 64px 1fr 58px; gap: 12px; align-items: center;
+    font-family: "SF Mono", Menlo, monospace; font-size: 13px;
+  }
+  .conf-row .name { color: var(--text); text-transform: lowercase; }
+  .conf-row.peak .name { color: var(--gesture); font-weight: 700; }
+  .conf-bar {
+    background: rgba(255,255,255,0.06);
+    height: 10px; border-radius: 5px; overflow: hidden;
+  }
+  .conf-fill {
+    height: 100%; background: var(--muted); width: 0%;
+    transition: width 0.16s ease-out, background 0.2s;
+    border-radius: 5px;
+  }
+  .conf-row.peak .conf-fill { background: var(--gesture); }
+  .conf-row .pct {
+    text-align: right; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .conf-row.peak .pct { color: var(--gesture); }
+  .conf-empty {
+    color: var(--muted); font-size: 12px; font-style: italic; text-align: center;
+    padding: 20px 0;
+  }
+
+  /* ─── Force gauges ─────────────────────────────────────── */
+  .force-card { padding: 16px 22px 16px; }
+  .force-gauges {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px;
+  }
+  @media (max-width: 700px) { .force-gauges { grid-template-columns: 1fr; } }
+  .gauge {
+    display: grid; grid-template-columns: 72px 1fr 70px; gap: 12px; align-items: center;
+    font-family: "SF Mono", Menlo, monospace; font-size: 13px;
+  }
+  .gauge .gname { color: var(--text); text-transform: lowercase; }
+  .gauge-track {
+    background: rgba(255,255,255,0.06);
+    height: 16px; border-radius: 8px; position: relative; overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%; background: var(--hr); width: 0%;
+    transition: width 0.1s linear, background 0.18s;
+    border-radius: 8px 0 0 8px;
+  }
+  .gauge-thr {
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: var(--warn); opacity: 0.85;
+  }
+  .gauge .gval {
+    text-align: right; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .gauge.over .gauge-fill { background: var(--warn); }
+  .gauge.over .gval { color: var(--warn); font-weight: 700; }
+  .gauge.over .gname { color: var(--warn); }
+
+  /* ─── Vitals tiles (existing) ──────────────────────────── */
+  .vitals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .vital {
+    background: var(--panel); border-radius: 12px;
+    padding: 14px 18px 16px; position: relative; overflow: hidden;
+  }
+  .vital::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent, var(--muted)); opacity: 0.85;
+  }
+  .vital.hr   { --accent: var(--hr); }
+  .vital.hrv  { --accent: var(--hrv); }
+  .vital.rr   { --accent: var(--rr); }
+  .vital.resp { --accent: var(--resp); }
+  .vital .lbl {
+    font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .vital .val {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+    font-weight: 600; font-variant-numeric: tabular-nums;
+    line-height: 1; color: var(--accent);
+  }
+  .vital .unit { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; letter-spacing: 0.3px; }
+  .vital.hr   .val { font-size: clamp(48px, 6vw, 76px); }
+  .vital.hrv  .val { font-size: clamp(32px, 4vw, 46px); }
+  .vital.rr   .val { font-size: clamp(32px, 4vw, 46px); }
+  .vital.resp .val { font-size: clamp(32px, 4vw, 46px); }
+  .vital .sub { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: "SF Mono", Menlo, monospace; }
+
+  .footer {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 11px; color: var(--muted);
+    padding: 4px 8px 0;
+  }
+  .footer .warn { color: var(--warn); font-weight: 600; }
+
+  .uplot, .u-wrap { background: transparent !important; }
+  .u-axis, .u-legend { color: var(--muted) !important; }
+  .u-legend { display: none !important; }
+
+  /* Channel-colour legend pip for the EMG card */
+  .ch-legend {
+    display: inline-flex; gap: 14px; margin-left: 10px;
+    font-family: "SF Mono", Menlo, monospace; font-size: 11px; color: var(--muted);
+    text-transform: none; letter-spacing: 0;
+  }
+  .ch-legend .pip {
+    display: inline-block; width: 14px; height: 3px; border-radius: 2px;
+    vertical-align: middle; margin-right: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EMG Hand · <span class="accent">Live</span></h1>
+  <div class="conn" id="conn">
+    <span class="dot"></span>
+    <span id="conn-status">connecting…</span>
+  </div>
+</header>
+
+<!-- ── Gesture + confidence row ─────────────────────────────── -->
+<section class="gesture-row">
+  <div class="gesture-card idle" id="gesture-card">
+    <div class="lbl">Detected gesture</div>
+    <div class="val" id="gesture">--</div>
+    <div class="sub" id="gesture-sub">awaiting EMG stream…</div>
+  </div>
+  <div class="conf-card">
+    <div class="lbl">Classifier confidence · live softmax</div>
+    <div class="conf-rows" id="conf-rows">
+      <div class="conf-empty" id="conf-empty">no model loaded — train via record_gestures.py + train_gestures.py</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Fingertip force gauges ──────────────────────────────── -->
+<div class="card force-card">
+  <div class="lbl">Fingertip force · live FSR readings (raw ADC 0–4095, red tick = grip-stop threshold)</div>
+  <div class="force-gauges" id="force-gauges">
+    <!-- populated by JS on first 'control' message -->
+  </div>
+</div>
+
+<!-- ── EMG waveform (dual channel) ─────────────────────────── -->
+<div class="card emg-card">
+  <div class="lbl">
+    EMG · 2 channels @ 250 Hz · last 4 s
+    <span class="ch-legend">
+      <span><span class="pip" style="background: var(--emg1)"></span>CH1 flexor</span>
+      <span><span class="pip" style="background: var(--emg2)"></span>CH2 extensor</span>
+    </span>
+  </div>
+  <div class="plot" id="emg-plot" style="height: 200px;"></div>
+</div>
+
+<!-- ── Vitals tiles (HR / HRV / RR / Resp) ─────────────────── -->
+<section class="vitals">
+  <div class="vital hr">
+    <div class="lbl">Heart rate</div>
+    <div class="val"><span id="hr">--</span><span class="unit">BPM</span></div>
+    <div class="sub" id="hr-sub">awaiting first beats…</div>
+  </div>
+  <div class="vital hrv">
+    <div class="lbl">HRV · RMSSD</div>
+    <div class="val"><span id="hrv">--</span><span class="unit">ms</span></div>
+    <div class="sub"><span id="sdnn">--</span> ms SDNN</div>
+  </div>
+  <div class="vital rr">
+    <div class="lbl">Last RR</div>
+    <div class="val"><span id="rr">--</span><span class="unit">ms</span></div>
+    <div class="sub"><span id="nbeats">0</span> beats logged</div>
+  </div>
+  <div class="vital resp">
+    <div class="lbl">Resp · derived</div>
+    <div class="val"><span id="resp">--</span><span class="unit">/min</span></div>
+    <div class="sub">from RR modulation (RSA)</div>
+  </div>
+</section>
+
+<!-- ── ECG plot ─────────────────────────────────────────────── -->
+<div class="card">
+  <div class="lbl">Lead I ECG · 250 Hz display · last 5 s</div>
+  <div class="plot" id="ecg-plot" style="height: 220px;"></div>
+</div>
+
+<!-- ── RR tachogram ────────────────────────────────────────── -->
+<div class="card">
+  <div class="lbl">RR-interval tachogram · last 60 beats</div>
+  <div class="plot" id="rr-plot" style="height: 140px;"></div>
+</div>
+
+<div class="footer">
+  <span id="stream-stat">no stream</span>
+  <span id="pkt-stat">-- pkts · -- dropped</span>
+  <span id="clock">--:--:--</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // ════════════ EMG plot (2 channels) ════════════
+  const EMG_WIN_S = 4;
+  const EMG_HZ    = 250;
+  const EMG_N     = EMG_WIN_S * EMG_HZ;
+  const emgX  = new Float64Array(EMG_N);
+  const emgY1 = new Float64Array(EMG_N);
+  const emgY2 = new Float64Array(EMG_N);
+  for (let i = 0; i < EMG_N; i++) emgX[i] = (i - EMG_N) / EMG_HZ;
+  emgY1.fill(0); emgY2.fill(0);
+
+  const emgPlot = new uPlot({
+    width: 100, height: 200,
+    cursor: { show: false },
+    legend: { show: false },
+    scales: { x: { time: false, range: [-EMG_WIN_S, 0] }, y: {} },
+    axes: [
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" },
+        values: (u, vs) => vs.map(v => v.toFixed(0) + "s") },
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" } },
+    ],
+    series: [
+      {},
+      { stroke: "#ff9744", width: 1.2, points: { show: false } },
+      { stroke: "#4cc9ff", width: 1.2, points: { show: false } },
+    ],
+  }, [emgX, emgY1, emgY2], $("emg-plot"));
+
+  // ════════════ ECG plot ════════════
+  const ECG_WIN_S = 5;
+  const ECG_HZ    = 250;
+  const ECG_N     = ECG_WIN_S * ECG_HZ;
+  const ecgX = new Float64Array(ECG_N);
+  const ecgY = new Float64Array(ECG_N);
+  for (let i = 0; i < ECG_N; i++) ecgX[i] = (i - ECG_N) / ECG_HZ;
+  ecgY.fill(0);
+
+  const ecgPlot = new uPlot({
+    width: 100, height: 220,
+    cursor: { show: false },
+    legend: { show: false },
+    scales: { x: { time: false, range: [-ECG_WIN_S, 0] }, y: {} },
+    axes: [
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" },
+        values: (u, vs) => vs.map(v => v.toFixed(0) + "s") },
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" } },
+    ],
+    series: [
+      {},
+      { stroke: "#00ff88", width: 1.5, points: { show: false } },
+    ],
+  }, [ecgX, ecgY], $("ecg-plot"));
+
+  // ════════════ RR tachogram ════════════
+  const RR_N = 60;
+  const rrX = new Float64Array(RR_N);
+  const rrY = new Float64Array(RR_N);
+  for (let i = 0; i < RR_N; i++) rrX[i] = i - RR_N + 1;
+  rrY.fill(NaN);
+
+  const rrPlot = new uPlot({
+    width: 100, height: 140,
+    cursor: { show: false },
+    legend: { show: false },
+    scales: { x: { time: false, range: [-RR_N + 1, 0] }, y: { range: [400, 1400] } },
+    axes: [
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" } },
+      { stroke: "#6e7e96", grid: { stroke: "#1f2c47", width: 0.5 }, ticks: { stroke: "#1f2c47" },
+        values: (u, vs) => vs.map(v => v + " ms") },
+    ],
+    series: [
+      {},
+      { stroke: "#4cc9ff", width: 1.5, points: { show: true, size: 5, fill: "#4cc9ff" } },
+    ],
+  }, [rrX, rrY], $("rr-plot"));
+
+  function resize() {
+    emgPlot.setSize({ width: $("emg-plot").clientWidth, height: 200 });
+    ecgPlot.setSize({ width: $("ecg-plot").clientWidth, height: 220 });
+    rrPlot .setSize({ width: $("rr-plot").clientWidth,  height: 140 });
+  }
+  window.addEventListener("resize", resize);
+  setTimeout(resize, 0);
+
+  // ════════════ Confidence bars ════════════
+  let confBuilt = false;
+  function buildConfRows(names) {
+    const container = $("conf-rows");
+    container.innerHTML = "";
+    names.forEach((name, i) => {
+      const row = document.createElement("div");
+      row.className = "conf-row";
+      row.id = `conf-row-${i}`;
+      row.innerHTML = `
+        <div class="name">${name}</div>
+        <div class="conf-bar"><div class="conf-fill" id="conf-fill-${i}"></div></div>
+        <div class="pct" id="conf-pct-${i}">--</div>
+      `;
+      container.appendChild(row);
+    });
+    confBuilt = true;
+  }
+
+  // ════════════ Force gauges ════════════
+  const FORCE_MAX = 4095;
+  let gaugeBuilt = false;
+  function buildGauges(fingers) {
+    const container = $("force-gauges");
+    container.innerHTML = "";
+    fingers.forEach((finger, i) => {
+      const g = document.createElement("div");
+      g.className = "gauge";
+      g.id = `gauge-${i}`;
+      g.innerHTML = `
+        <div class="gname">${finger}</div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="gauge-fill-${i}"></div>
+          <div class="gauge-thr"  id="gauge-thr-${i}"></div>
+        </div>
+        <div class="gval" id="gauge-val-${i}">0</div>
+      `;
+      container.appendChild(g);
+    });
+    gaugeBuilt = true;
+  }
+
+  // ════════════ WebSocket streaming ════════════
+  const wsURL = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+  let ws = null;
+
+  function connect() {
+    ws = new WebSocket(wsURL);
+    ws.onopen = () => {
+      $("conn").classList.add("live");
+      $("conn-status").textContent = "live";
+    };
+    ws.onclose = () => {
+      $("conn").classList.remove("live");
+      $("conn-status").textContent = "reconnecting…";
+      setTimeout(connect, 1500);
+    };
+    ws.onerror = () => { try { ws.close(); } catch (_) {} };
+    ws.onmessage = (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+
+      if (msg.type === "waveform") {
+        // ECG (existing)
+        if (msg.ecg && msg.ecg.length) {
+          const n = msg.ecg.length;
+          ecgY.copyWithin(0, n);
+          for (let i = 0; i < n; i++) ecgY[ECG_N - n + i] = msg.ecg[i];
+          ecgPlot.setData([ecgX, ecgY]);
+        }
+        // EMG (new) — two channels
+        if (msg.emg_ch1 && msg.emg_ch1.length) {
+          const n = msg.emg_ch1.length;
+          emgY1.copyWithin(0, n);
+          emgY2.copyWithin(0, n);
+          for (let i = 0; i < n; i++) {
+            emgY1[EMG_N - n + i] = msg.emg_ch1[i];
+            emgY2[EMG_N - n + i] = msg.emg_ch2[i] ?? 0;
+          }
+          emgPlot.setData([emgX, emgY1, emgY2]);
+        }
+
+      } else if (msg.type === "control") {
+        // Build the confidence-bar rows once we know the class names
+        if (msg.names && msg.names.length && !confBuilt) buildConfRows(msg.names);
+        if (msg.fingers && msg.fingers.length && !gaugeBuilt) buildGauges(msg.fingers);
+
+        // Current gesture
+        const card = $("gesture-card");
+        if (msg.gesture) {
+          $("gesture").textContent = msg.gesture;
+          $("gesture-sub").textContent = `${msg.names.length}-class CNN · live`;
+          card.classList.remove("idle");
+        } else if (msg.names && msg.names.length === 0) {
+          $("gesture").textContent = "--";
+          $("gesture-sub").textContent = "no model loaded";
+          card.classList.add("idle");
+        }
+
+        // Confidence bars
+        if (confBuilt && msg.probs && msg.probs.length === msg.names.length) {
+          let peakIdx = 0, peakVal = -1;
+          for (let i = 0; i < msg.probs.length; i++) {
+            if (msg.probs[i] > peakVal) { peakVal = msg.probs[i]; peakIdx = i; }
+          }
+          for (let i = 0; i < msg.probs.length; i++) {
+            const p = msg.probs[i];
+            const row  = $(`conf-row-${i}`);
+            const fill = $(`conf-fill-${i}`);
+            const pct  = $(`conf-pct-${i}`);
+            if (fill) fill.style.width = `${(p * 100).toFixed(1)}%`;
+            if (pct)  pct.textContent  = `${(p * 100).toFixed(0)}%`;
+            if (row)  row.classList.toggle("peak", i === peakIdx);
+          }
+        }
+
+        // Force gauges
+        if (gaugeBuilt && msg.fsr && msg.fsr.length) {
+          for (let i = 0; i < msg.fsr.length; i++) {
+            const v   = msg.fsr[i];
+            const thr = msg.thresholds[i] ?? 1800;
+            const fillPct = Math.min(100, Math.max(0, (v / FORCE_MAX) * 100));
+            const thrPct  = Math.min(100, Math.max(0, (thr / FORCE_MAX) * 100));
+            const fill  = $(`gauge-fill-${i}`);
+            const thrEl = $(`gauge-thr-${i}`);
+            const val   = $(`gauge-val-${i}`);
+            const row   = $(`gauge-${i}`);
+            if (fill)  fill.style.width   = `${fillPct}%`;
+            if (thrEl) thrEl.style.left   = `${thrPct}%`;
+            if (val)   val.textContent    = v;
+            if (row)   row.classList.toggle("over", v > thr);
+          }
+        }
+
+      } else if (msg.type === "vitals") {
+        if (msg.hr   != null) { $("hr").textContent   = Math.round(msg.hr); $("hr-sub").textContent = "stable"; }
+        if (msg.hrv  != null) $("hrv").textContent    = msg.hrv .toFixed(1);
+        if (msg.sdnn != null) $("sdnn").textContent   = msg.sdnn.toFixed(1);
+        if (msg.rr   != null) $("rr").textContent     = Math.round(msg.rr);
+        if (msg.resp != null) $("resp").textContent   = msg.resp.toFixed(1);
+        if (msg.n_beats != null) $("nbeats").textContent = msg.n_beats;
+        if (msg.rr_history) {
+          const recent = msg.rr_history.slice(-RR_N);
+          for (let i = 0; i < RR_N; i++) {
+            const j = i - (RR_N - recent.length);
+            rrY[i] = j >= 0 ? recent[j] : NaN;
+          }
+          rrPlot.setData([rrX, rrY]);
+        }
+
+      } else if (msg.type === "stats") {
+        $("pkt-stat").textContent = `${msg.packets.toLocaleString()} pkts · ${msg.dropped} dropped`;
+        $("stream-stat").textContent = msg.active ? "ESP32 streaming" : "no ESP32 packets";
+        $("stream-stat").classList.toggle("warn", !msg.active);
+      }
+    };
+  }
+  connect();
+
+  // Local clock
+  setInterval(() => {
+    $("clock").textContent = new Date().toLocaleTimeString();
+  }, 1000);
+</script>
+</body>
+</html>

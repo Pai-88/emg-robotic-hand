@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EMG → Robotic Hand · Electronic Setup</title>
+<style>
+  :root {
+    --bg: #ece4d2;
+    --paper: #fdfaf3;
+    --paper-2: #f5edd6;
+    --ink: #2c3e50;
+    --ink-2: #1a252f;
+    --muted: #7f8c8d;
+    --line: #ecdbb1;
+    --power: #c0392b;
+    --gnd: #34495e;
+    --ch1: #d35400;
+    --ch2: #2980b9;
+    --wifi: #27ae60;
+    --i2c: #8e44ad;
+    --pwm: #16a085;
+    --skin: #f0c39a;
+    --skin-edge: #bf8a5d;
+  }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--bg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+  }
+  .wrap {
+    max-width: 1480px; margin: 0 auto;
+    background: var(--paper); border-radius: 14px;
+    padding: 28px 32px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
+  .sub { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+  svg { display: block; width: 100%; height: auto; }
+  text { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; fill: var(--ink); }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; fill: var(--muted); }
+  .label { font-size: 13px; font-weight: 500; }
+  .label-bold { font-size: 13px; font-weight: 600; }
+  .pin { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 10.5px; }
+  .pin-bold { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 10.5px; font-weight: 600; }
+  .note { font-size: 11px; fill: var(--muted); }
+  .box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 18px 24px; margin-top: 18px; font-size: 12px; color: var(--muted); }
+  .legend > div { display: flex; align-items: center; gap: 8px; }
+  .swatch { display: inline-block; width: 26px; height: 4px; border-radius: 2px; }
+  .swatch.dashed { border-top: 2px dashed; height: 0; width: 26px; }
+  .pintable { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 20px; }
+  .pintable table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pintable th, .pintable td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  .pintable th { font-weight: 600; color: var(--muted); background: var(--paper-2); font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; }
+  .pintable code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+  .pintable p { margin: 12px 0 6px; }
+  .warning { background: #fdecea; border-left: 4px solid var(--power); padding: 10px 14px; margin: 16px 0 0; border-radius: 4px; font-size: 13px; color: var(--ink); }
+  .warning strong { color: var(--power); }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EMG → Robotic Hand · Electronic Setup</h1>
+  <p class="sub">Dual-channel surface EMG · ESP32 acquires at 1 kHz · UDP/WiFi → Pi 5 inference → PCA9685 → 5-finger servo hand</p>
+  <hr>
+
+  <svg viewBox="0 0 1400 1160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EMG robotic hand electronic setup diagram">
+    <defs>
+      <marker id="arr"      markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#2c3e50"/></marker>
+      <marker id="arr-ch1"  markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#d35400"/></marker>
+      <marker id="arr-ch2"  markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#2980b9"/></marker>
+      <marker id="arr-wifi" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#27ae60"/></marker>
+      <marker id="arr-i2c"  markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#8e44ad"/></marker>
+    </defs>
+
+    <!-- =============================================================
+         SECTION A · SYSTEM SIGNAL CHAIN  (y: 0 – 230)
+         ============================================================= -->
+    <text x="30" y="22" class="panel-title">A · SYSTEM SIGNAL CHAIN</text>
+
+    <!-- Box 1: Forearm -->
+    <g transform="translate(40,40)">
+      <rect width="220" height="170" rx="10" class="box"/>
+      <text x="110" y="26" text-anchor="middle" class="label-bold">Forearm</text>
+      <text x="110" y="42" text-anchor="middle" class="note">2 × bipolar electrode pair</text>
+      <ellipse cx="110" cy="100" rx="76" ry="32" fill="#f0c39a" stroke="#bf8a5d" stroke-width="1.5"/>
+      <circle cx="84"  cy="88"  r="5" fill="#d35400"/>
+      <circle cx="110" cy="88"  r="5" fill="#d35400"/>
+      <circle cx="84"  cy="115" r="5" fill="#2980b9"/>
+      <circle cx="110" cy="115" r="5" fill="#2980b9"/>
+      <circle cx="166" cy="102" r="5" fill="#7f8c8d"/>
+      <text x="76"  y="92"  text-anchor="end" class="pin" fill="#d35400">FLX</text>
+      <text x="76"  y="119" text-anchor="end" class="pin" fill="#2980b9">EXT</text>
+      <text x="174" y="106" class="pin" fill="#7f8c8d">REF</text>
+      <text x="110" y="160" text-anchor="middle" class="note">CH1 flexor · CH2 extensor</text>
+    </g>
+
+    <line x1="262" y1="125" x2="306" y2="125" stroke="#2c3e50" stroke-width="1.8" marker-end="url(#arr)"/>
+    <text x="284" y="118" text-anchor="middle" class="note">skin</text>
+
+    <!-- Box 2: AD8232 ×2 -->
+    <g transform="translate(308,40)">
+      <rect width="220" height="170" rx="10" class="box"/>
+      <text x="110" y="26" text-anchor="middle" class="label-bold">AD8232 × 2</text>
+      <text x="110" y="42" text-anchor="middle" class="note">instrumentation amp + filter</text>
+      <rect x="35" y="58" width="150" height="42" rx="4" fill="#f5edd6" stroke="#bdc3c7" stroke-width="1"/>
+      <text x="110" y="77" text-anchor="middle" class="pin-bold" fill="#d35400">#1 · CH1 flexor</text>
+      <text x="110" y="92" text-anchor="middle" class="note">gain ≈ 1100×</text>
+      <rect x="35" y="110" width="150" height="42" rx="4" fill="#f5edd6" stroke="#bdc3c7" stroke-width="1"/>
+      <text x="110" y="129" text-anchor="middle" class="pin-bold" fill="#2980b9">#2 · CH2 extensor</text>
+      <text x="110" y="144" text-anchor="middle" class="note">gain ≈ 1100×</text>
+    </g>
+
+    <line x1="530" y1="92"  x2="574" y2="92"  stroke="#d35400" stroke-width="1.8" marker-end="url(#arr-ch1)"/>
+    <line x1="530" y1="138" x2="574" y2="138" stroke="#2980b9" stroke-width="1.8" marker-end="url(#arr-ch2)"/>
+    <text x="552" y="78" text-anchor="middle" class="note">analog</text>
+
+    <!-- Box 3: ESP32 -->
+    <g transform="translate(576,40)">
+      <rect width="220" height="170" rx="10" class="box"/>
+      <text x="110" y="26" text-anchor="middle" class="label-bold">ESP32</text>
+      <text x="110" y="42" text-anchor="middle" class="note">12-bit ADC · WiFi UDP TX</text>
+      <rect x="60" y="60" width="100" height="78" rx="6" fill="#2c3e50"/>
+      <text x="110" y="92" text-anchor="middle" class="label-bold" fill="#fdfaf3">ESP-WROOM-32</text>
+      <text x="110" y="110" text-anchor="middle" class="pin" fill="#bdc3c7">esp32_emg_streamer.ino</text>
+      <text x="110" y="160" text-anchor="middle" class="note">2 ch × int16 @ 1 kHz</text>
+    </g>
+
+    <line x1="798" y1="125" x2="842" y2="125" stroke="#27ae60" stroke-width="1.8" stroke-dasharray="6,4" marker-end="url(#arr-wifi)"/>
+    <text x="820" y="118" text-anchor="middle" class="note" fill="#27ae60">WiFi</text>
+    <text x="820" y="143" text-anchor="middle" class="note" fill="#27ae60">UDP :5555</text>
+
+    <!-- Box 4: Pi 5 -->
+    <g transform="translate(844,40)">
+      <rect width="220" height="170" rx="10" class="box"/>
+      <text x="110" y="26" text-anchor="middle" class="label-bold">Raspberry Pi 5</text>
+      <text x="110" y="42" text-anchor="middle" class="note">inference + control</text>
+      <rect x="50" y="58" width="120" height="84" rx="6" fill="#c0392b"/>
+      <text x="110" y="86" text-anchor="middle" class="label-bold" fill="#fdfaf3">Pi 5</text>
+      <text x="110" y="104" text-anchor="middle" class="pin" fill="#fdfaf3">predict_realtime</text>
+      <text x="110" y="120" text-anchor="middle" class="pin" fill="#fdfaf3">EMGGestureNet</text>
+      <text x="110" y="160" text-anchor="middle" class="note">~20 Hz gesture output</text>
+    </g>
+
+    <line x1="1066" y1="125" x2="1110" y2="125" stroke="#8e44ad" stroke-width="1.8" marker-end="url(#arr-i2c)"/>
+    <text x="1088" y="118" text-anchor="middle" class="note" fill="#8e44ad">I²C</text>
+
+    <!-- Box 5: Servo Hand -->
+    <g transform="translate(1112,40)">
+      <rect width="220" height="170" rx="10" class="box"/>
+      <text x="110" y="26" text-anchor="middle" class="label-bold">Servo Hand</text>
+      <text x="110" y="42" text-anchor="middle" class="note">PCA9685 + 5 servos</text>
+      <rect x="64" y="80" width="92" height="42" rx="6" fill="#f0c39a" stroke="#bf8a5d"/>
+      <rect x="66" y="60" width="14" height="22" rx="3" fill="#f0c39a" stroke="#bf8a5d"/>
+      <rect x="84" y="56" width="14" height="26" rx="3" fill="#f0c39a" stroke="#bf8a5d"/>
+      <rect x="102" y="60" width="14" height="22" rx="3" fill="#f0c39a" stroke="#bf8a5d"/>
+      <rect x="120" y="64" width="14" height="18" rx="3" fill="#f0c39a" stroke="#bf8a5d"/>
+      <rect x="155" y="98" width="22" height="14" rx="3" fill="#f0c39a" stroke="#bf8a5d"/>
+      <text x="110" y="160" text-anchor="middle" class="note">5 DoF · PWM 50 Hz</text>
+    </g>
+
+    <!-- Divider -->
+    <line x1="30" y1="245" x2="1370" y2="245" stroke="#ecdbb1"/>
+
+    <!-- =============================================================
+         SECTION B · ANATOMY & WIRING DETAIL
+         ============================================================= -->
+    <text x="30" y="272" class="panel-title">B · ANATOMY &amp; WIRING DETAIL</text>
+
+    <!-- ============================================================
+         PANEL B1 · Electrode placement (x: 30 – 370)
+         ============================================================ -->
+    <g transform="translate(30,290)">
+      <rect width="340" height="840" rx="10" class="box"/>
+      <text x="20" y="26" class="label-bold">1 · Electrode placement</text>
+
+      <!-- Palmar view -->
+      <text x="85" y="56" text-anchor="middle" class="note" font-weight="600">PALMAR (front)</text>
+      <text x="85" y="71" text-anchor="middle" class="note">flexor digitorum</text>
+      <path d="M 55 90 Q 50 200 70 320 L 100 320 Q 120 200 115 90 Z" fill="#f0c39a" stroke="#bf8a5d" stroke-width="1.5"/>
+      <line x1="52" y1="100" x2="118" y2="100" stroke="#bf8a5d" stroke-dasharray="2,2"/>
+      <text x="125" y="103" class="note">elbow</text>
+      <circle cx="83" cy="160" r="7" fill="#d35400" stroke="#fdfaf3" stroke-width="2"/>
+      <circle cx="83" cy="195" r="7" fill="#d35400" stroke="#fdfaf3" stroke-width="2"/>
+      <line x1="125" y1="160" x2="92" y2="160" stroke="#d35400" stroke-width="0.8"/>
+      <line x1="125" y1="195" x2="92" y2="195" stroke="#d35400" stroke-width="0.8"/>
+      <text x="130" y="164" class="pin" fill="#d35400">FLX +</text>
+      <text x="130" y="199" class="pin" fill="#d35400">FLX −</text>
+      <line x1="70" y1="310" x2="100" y2="310" stroke="#bf8a5d" stroke-dasharray="2,2"/>
+      <text x="108" y="313" class="note">wrist</text>
+
+      <!-- Dorsal view -->
+      <text x="245" y="56" text-anchor="middle" class="note" font-weight="600">DORSAL (back)</text>
+      <text x="245" y="71" text-anchor="middle" class="note">extensor digitorum</text>
+      <path d="M 215 90 Q 210 200 230 320 L 260 320 Q 280 200 275 90 Z" fill="#f0c39a" stroke="#bf8a5d" stroke-width="1.5"/>
+      <line x1="212" y1="100" x2="278" y2="100" stroke="#bf8a5d" stroke-dasharray="2,2"/>
+      <text x="206" y="103" text-anchor="end" class="note">elbow</text>
+      <circle cx="247" cy="160" r="7" fill="#2980b9" stroke="#fdfaf3" stroke-width="2"/>
+      <circle cx="247" cy="195" r="7" fill="#2980b9" stroke="#fdfaf3" stroke-width="2"/>
+      <line x1="205" y1="160" x2="238" y2="160" stroke="#2980b9" stroke-width="0.8"/>
+      <line x1="205" y1="195" x2="238" y2="195" stroke="#2980b9" stroke-width="0.8"/>
+      <text x="200" y="164" text-anchor="end" class="pin" fill="#2980b9">EXT +</text>
+      <text x="200" y="199" text-anchor="end" class="pin" fill="#2980b9">EXT −</text>
+      <line x1="230" y1="310" x2="260" y2="310" stroke="#bf8a5d" stroke-dasharray="2,2"/>
+      <text x="268" y="313" class="note">wrist</text>
+
+      <!-- Shared reference -->
+      <circle cx="170" cy="370" r="7" fill="#7f8c8d" stroke="#fdfaf3" stroke-width="2"/>
+      <text x="185" y="374" class="pin" fill="#7f8c8d">REF · shared</text>
+      <text x="20" y="404" class="note">On bony prominence — olecranon (elbow tip)</text>
+      <text x="20" y="420" class="note">or ulnar styloid. Tie BOTH AD8232 RL pins</text>
+      <text x="20" y="436" class="note">to this single reference electrode.</text>
+
+      <!-- Tips -->
+      <line x1="20" y1="460" x2="320" y2="460" stroke="#ecdbb1"/>
+      <text x="20" y="482" class="label-bold">Best-practice tips</text>
+      <text x="20" y="504" class="note">• Inter-electrode spacing ≈ 2 cm,</text>
+      <text x="20" y="520" class="note">  aligned with muscle-fibre direction.</text>
+      <text x="20" y="540" class="note">• Clean skin with alcohol &amp; lightly abrade.</text>
+      <text x="20" y="560" class="note">• Avoid joint creases (motion artefact).</text>
+      <text x="20" y="580" class="note">• Locate muscle belly: contract &amp; palpate.</text>
+      <text x="20" y="600" class="note">• Pre-gelled Ag/AgCl disposables work well.</text>
+      <text x="20" y="620" class="note">• Keep cable runs short &amp; twisted together</text>
+      <text x="20" y="636" class="note">  to reduce 50 Hz mains pickup.</text>
+      <text x="20" y="656" class="note">• Re-record gestures.npz if you change</text>
+      <text x="20" y="672" class="note">  electrode site — model is site-specific.</text>
+
+      <!-- Anatomy mini-summary -->
+      <line x1="20" y1="700" x2="320" y2="700" stroke="#ecdbb1"/>
+      <text x="20" y="722" class="label-bold">Anatomy at a glance</text>
+      <text x="20" y="744" class="note">Hand closes → flexors fire (palmar)</text>
+      <text x="20" y="762" class="note">Hand opens → extensors fire (dorsal)</text>
+      <text x="20" y="784" class="note">Bipolar pair straddles the muscle belly,</text>
+      <text x="20" y="800" class="note">≈ ⅓ of the way from elbow to wrist.</text>
+    </g>
+
+    <!-- ============================================================
+         PANEL B2 · Analog frontend wiring (x: 390 – 1000)
+         ============================================================ -->
+    <g transform="translate(390,290)">
+      <rect width="610" height="840" rx="10" class="box"/>
+      <text x="20" y="26" class="label-bold">2 · Analog frontend → ESP32 wiring</text>
+
+      <!-- AD8232 #1 (group origin at translate(40,70)) -->
+      <g transform="translate(40,70)">
+        <rect width="200" height="170" rx="8" fill="#fef6e3" stroke="#2c3e50" stroke-width="1.5"/>
+        <text x="100" y="22" text-anchor="middle" class="label-bold">AD8232 #1</text>
+        <text x="100" y="38" text-anchor="middle" class="note" fill="#d35400">flexor channel</text>
+
+        <!-- Electrode jacks (left side) -->
+        <circle cx="0" cy="76"  r="4" fill="#d35400"/>
+        <text x="-8" y="79"  text-anchor="end" class="pin" fill="#d35400">RA · FLX +</text>
+        <circle cx="0" cy="101" r="4" fill="#d35400"/>
+        <text x="-8" y="104" text-anchor="end" class="pin" fill="#d35400">LA · FLX −</text>
+        <circle cx="0" cy="126" r="4" fill="#7f8c8d"/>
+        <text x="-8" y="129" text-anchor="end" class="pin" fill="#7f8c8d">RL · REF</text>
+
+        <!-- Header pins (right side) -->
+        <circle cx="200" cy="62"  r="4" fill="#c0392b"/>
+        <text x="194" y="65"  text-anchor="end" class="pin" fill="#c0392b">3.3V</text>
+        <circle cx="200" cy="84"  r="4" fill="#34495e"/>
+        <text x="194" y="87"  text-anchor="end" class="pin" fill="#34495e">GND</text>
+        <circle cx="200" cy="106" r="4" fill="#d35400"/>
+        <text x="194" y="109" text-anchor="end" class="pin" fill="#d35400">OUTPUT</text>
+        <circle cx="200" cy="128" r="4" fill="#95a5a6"/>
+        <text x="194" y="131" text-anchor="end" class="pin" fill="#95a5a6">LO+</text>
+        <circle cx="200" cy="150" r="4" fill="#95a5a6"/>
+        <text x="194" y="153" text-anchor="end" class="pin" fill="#95a5a6">LO−</text>
+      </g>
+
+      <!-- AD8232 #2 (group origin at translate(40,310)) -->
+      <g transform="translate(40,310)">
+        <rect width="200" height="170" rx="8" fill="#fef6e3" stroke="#2c3e50" stroke-width="1.5"/>
+        <text x="100" y="22" text-anchor="middle" class="label-bold">AD8232 #2</text>
+        <text x="100" y="38" text-anchor="middle" class="note" fill="#2980b9">extensor channel</text>
+
+        <circle cx="0" cy="76"  r="4" fill="#2980b9"/>
+        <text x="-8" y="79"  text-anchor="end" class="pin" fill="#2980b9">RA · EXT +</text>
+        <circle cx="0" cy="101" r="4" fill="#2980b9"/>
+        <text x="-8" y="104" text-anchor="end" class="pin" fill="#2980b9">LA · EXT −</text>
+        <circle cx="0" cy="126" r="4" fill="#7f8c8d"/>
+        <text x="-8" y="129" text-anchor="end" class="pin" fill="#7f8c8d">RL · REF</text>
+
+        <circle cx="200" cy="62"  r="4" fill="#c0392b"/>
+        <text x="194" y="65"  text-anchor="end" class="pin" fill="#c0392b">3.3V</text>
+        <circle cx="200" cy="84"  r="4" fill="#34495e"/>
+        <text x="194" y="87"  text-anchor="end" class="pin" fill="#34495e">GND</text>
+        <circle cx="200" cy="106" r="4" fill="#2980b9"/>
+        <text x="194" y="109" text-anchor="end" class="pin" fill="#2980b9">OUTPUT</text>
+        <circle cx="200" cy="128" r="4" fill="#95a5a6"/>
+        <text x="194" y="131" text-anchor="end" class="pin" fill="#95a5a6">LO+</text>
+        <circle cx="200" cy="150" r="4" fill="#95a5a6"/>
+        <text x="194" y="153" text-anchor="end" class="pin" fill="#95a5a6">LO−</text>
+      </g>
+
+      <!-- Wires from AD8232s to ESP32.
+           Absolute positions inside this Panel B2 group:
+             AD8232 #1 group origin = (40,70); right pins at x = 40+200 = 240
+               3.3V at y = 70+62  = 132
+               GND  at y = 70+84  = 154
+               OUT  at y = 70+106 = 176
+               LO+  at y = 70+128 = 198
+               LO-  at y = 70+150 = 220
+             AD8232 #2 group origin = (40,310); right pins at x = 240
+               3.3V at y = 310+62  = 372
+               GND  at y = 310+84  = 394
+               OUT  at y = 310+106 = 416
+               LO+  at y = 310+128 = 438
+               LO-  at y = 310+150 = 460
+             ESP32 group origin = (420,90); left pads at x = 420 -->
+
+      <!-- 3.3V (shared) -->
+      <path d="M 240 132 H 320 V 180 H 420" stroke="#c0392b" stroke-width="2" fill="none"/>
+      <path d="M 240 372 H 320 V 180"        stroke="#c0392b" stroke-width="2" fill="none"/>
+      <!-- GND (shared) -->
+      <path d="M 240 154 H 310 V 205 H 420" stroke="#34495e" stroke-width="2" fill="none"/>
+      <path d="M 240 394 H 310 V 205"        stroke="#34495e" stroke-width="2" fill="none"/>
+      <!-- Analog OUTPUT #1 → GPIO 34 -->
+      <path d="M 240 176 H 370 V 270 H 420" stroke="#d35400" stroke-width="2.2" fill="none"/>
+      <!-- Analog OUTPUT #2 → GPIO 35 -->
+      <path d="M 240 416 H 370 V 300 H 420" stroke="#2980b9" stroke-width="2.2" fill="none"/>
+      <!-- LO+ #1 → GPIO 25 -->
+      <path d="M 240 198 H 350 V 360 H 420" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+      <!-- LO- #1 → GPIO 27 -->
+      <path d="M 240 220 H 340 V 420 H 420" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+      <!-- LO+ #2 → GPIO 26 -->
+      <path d="M 240 438 H 360 V 390 H 420" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+      <!-- LO- #2 → GPIO 32 -->
+      <path d="M 240 460 H 380 V 450 H 420" stroke="#95a5a6" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>
+
+      <!-- ESP32 (group origin at translate(420,90)) -->
+      <g transform="translate(420,90)">
+        <rect width="160" height="600" rx="10" fill="#2c3e50" stroke="#1a252f" stroke-width="1.5"/>
+        <text x="80" y="22" text-anchor="middle" class="label-bold" fill="#fdfaf3">ESP32 DevKit V1</text>
+        <rect x="65" y="34" width="30" height="10" rx="2" fill="#95a5a6"/>
+        <text x="80" y="58" text-anchor="middle" class="note" fill="#95a5a6">USB-C</text>
+
+        <!-- Used pins (left side, x = 0) -->
+        <circle cx="0" cy="90"  r="5" fill="#c0392b" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="93"  class="pin-bold" fill="#fdfaf3">3.3V</text>
+        <circle cx="0" cy="115" r="5" fill="#34495e" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="118" class="pin-bold" fill="#fdfaf3">GND</text>
+
+        <circle cx="0" cy="180" r="5" fill="#d35400" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="183" class="pin-bold" fill="#fdfaf3">GPIO 34 · ADC1_CH6</text>
+        <circle cx="0" cy="210" r="5" fill="#2980b9" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="213" class="pin-bold" fill="#fdfaf3">GPIO 35 · ADC1_CH7</text>
+
+        <circle cx="0" cy="270" r="5" fill="#95a5a6" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="273" class="pin-bold" fill="#fdfaf3">GPIO 25 · LO+ #1</text>
+        <circle cx="0" cy="300" r="5" fill="#95a5a6" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="303" class="pin-bold" fill="#fdfaf3">GPIO 26 · LO+ #2</text>
+        <circle cx="0" cy="330" r="5" fill="#95a5a6" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="333" class="pin-bold" fill="#fdfaf3">GPIO 27 · LO− #1</text>
+        <circle cx="0" cy="360" r="5" fill="#95a5a6" stroke="#fdfaf3" stroke-width="1"/>
+        <text x="10" y="363" class="pin-bold" fill="#fdfaf3">GPIO 32 · LO− #2</text>
+
+        <!-- Ghost pins for context (unused) -->
+        <g opacity="0.35">
+          <circle cx="0" cy="140" r="4" fill="#7f8c8d"/>
+          <text x="10" y="143" class="pin" fill="#bdc3c7">EN</text>
+          <circle cx="0" cy="240" r="4" fill="#7f8c8d"/>
+          <text x="10" y="243" class="pin" fill="#bdc3c7">GPIO 33</text>
+          <circle cx="0" cy="395" r="4" fill="#7f8c8d"/>
+          <text x="10" y="398" class="pin" fill="#bdc3c7">GPIO 14</text>
+          <circle cx="0" cy="420" r="4" fill="#7f8c8d"/>
+          <text x="10" y="423" class="pin" fill="#bdc3c7">GPIO 12</text>
+          <circle cx="0" cy="450" r="4" fill="#7f8c8d"/>
+          <text x="10" y="453" class="pin" fill="#bdc3c7">GPIO 13</text>
+        </g>
+
+        <!-- WiFi antenna icon -->
+        <g transform="translate(56,500)" stroke="#27ae60" stroke-width="1.5" fill="none">
+          <path d="M 0 30 Q 24 6 48 30"/>
+          <path d="M 10 32 Q 24 18 38 32"/>
+          <path d="M 18 34 Q 24 26 30 34"/>
+          <circle cx="24" cy="34" r="3" fill="#27ae60" stroke="none"/>
+        </g>
+        <text x="80" y="572" text-anchor="middle" class="note" fill="#27ae60">2.4 GHz WiFi</text>
+        <text x="80" y="586" text-anchor="middle" class="pin" fill="#27ae60">UDP → Pi 5</text>
+      </g>
+
+      <!-- left-side hints -->
+      <text x="20" y="155" class="note">3 wires to forearm →</text>
+      <text x="20" y="395" class="note">3 wires to forearm →</text>
+
+      <!-- Footnotes -->
+      <text x="20" y="770" class="note">Solid = analog signal · dashed gray = digital leads-off · red = 3.3 V · dark = GND.</text>
+      <text x="20" y="788" class="note">GPIO 34 / 35 / 36 / 39 are <tspan font-style="italic">input-only</tspan> on ESP32 (ADC1, no internal pull-ups) — perfect for analog.</text>
+      <text x="20" y="806" class="note">Common 3.3 V + GND rails are shared between both AD8232 boards.</text>
+    </g>
+
+    <!-- ============================================================
+         PANEL B3 · Pi 5 → PCA9685 → Hand (x: 1020 – 1370)
+         ============================================================ -->
+    <g transform="translate(1020,290)">
+      <rect width="350" height="840" rx="10" class="box"/>
+      <text x="20" y="26" class="label-bold">3 · Pi 5 → servo hand</text>
+
+      <!-- Pi 5 -->
+      <g transform="translate(40,60)">
+        <rect width="270" height="125" rx="8" fill="#c0392b" stroke="#7f1c12" stroke-width="1.5"/>
+        <text x="135" y="26" text-anchor="middle" class="label-bold" fill="#fdfaf3">Raspberry Pi 5</text>
+        <text x="135" y="46" text-anchor="middle" class="pin" fill="#fdfaf3">UDP :5555 listener</text>
+        <text x="135" y="64" text-anchor="middle" class="pin" fill="#fdfaf3">EMGGestureNet · 20 Hz</text>
+        <text x="135" y="82" text-anchor="middle" class="pin" fill="#fdfaf3">drives PCA9685 over I²C</text>
+        <!-- I²C pins -->
+        <circle cx="100" cy="125" r="5" fill="#8e44ad" stroke="#fdfaf3"/>
+        <text x="100" y="142" text-anchor="middle" class="pin" fill="#8e44ad">SDA</text>
+        <circle cx="135" cy="125" r="5" fill="#8e44ad" stroke="#fdfaf3"/>
+        <text x="135" y="142" text-anchor="middle" class="pin" fill="#8e44ad">SCL</text>
+        <circle cx="170" cy="125" r="5" fill="#34495e" stroke="#fdfaf3"/>
+        <text x="170" y="142" text-anchor="middle" class="pin" fill="#34495e">GND</text>
+      </g>
+
+      <!-- I²C bus -->
+      <path d="M 140 225 V 295" stroke="#8e44ad" stroke-width="2" fill="none"/>
+      <path d="M 175 225 V 295" stroke="#8e44ad" stroke-width="2" fill="none"/>
+      <path d="M 210 225 V 295" stroke="#34495e" stroke-width="2" fill="none"/>
+      <text x="245" y="265" class="note" fill="#8e44ad">I²C · 3.3 V logic</text>
+
+      <!-- PCA9685 -->
+      <g transform="translate(40,305)">
+        <rect width="270" height="115" rx="8" fill="#fef6e3" stroke="#2c3e50" stroke-width="1.5"/>
+        <text x="135" y="26" text-anchor="middle" class="label-bold">PCA9685 · 16-ch PWM</text>
+        <text x="135" y="44" text-anchor="middle" class="note">50 Hz · using channels 0 – 4</text>
+
+        <!-- top pins -->
+        <circle cx="60" cy="0" r="5" fill="#8e44ad" stroke="#fdfaf3"/>
+        <circle cx="95" cy="0" r="5" fill="#8e44ad" stroke="#fdfaf3"/>
+        <circle cx="130" cy="0" r="5" fill="#34495e" stroke="#fdfaf3"/>
+        <circle cx="225" cy="0" r="5" fill="#c0392b" stroke="#fdfaf3"/>
+        <text x="225" y="-9" text-anchor="middle" class="pin-bold" fill="#c0392b">V+ (5–6 V)</text>
+
+        <!-- bottom PWM channels -->
+        <g transform="translate(0,115)">
+          <circle cx="40"  cy="0" r="4" fill="#16a085"/>
+          <circle cx="80"  cy="0" r="4" fill="#16a085"/>
+          <circle cx="120" cy="0" r="4" fill="#16a085"/>
+          <circle cx="160" cy="0" r="4" fill="#16a085"/>
+          <circle cx="200" cy="0" r="4" fill="#16a085"/>
+          <text x="40"  y="16" text-anchor="middle" class="pin">CH 0</text>
+          <text x="80"  y="16" text-anchor="middle" class="pin">CH 1</text>
+          <text x="120" y="16" text-anchor="middle" class="pin">CH 2</text>
+          <text x="160" y="16" text-anchor="middle" class="pin">CH 3</text>
+          <text x="200" y="16" text-anchor="middle" class="pin">CH 4</text>
+        </g>
+      </g>
+
+      <!-- External 5 V supply -->
+      <g transform="translate(260,260)">
+        <rect width="80" height="34" rx="4" fill="#c0392b" stroke="#7f1c12"/>
+        <text x="40" y="14" text-anchor="middle" class="pin-bold" fill="#fdfaf3">5 V PSU</text>
+        <text x="40" y="26" text-anchor="middle" class="pin" fill="#fdfaf3">(separate!)</text>
+      </g>
+      <path d="M 300 294 V 305" stroke="#c0392b" stroke-width="2" fill="none"/>
+
+      <!-- PWM lines to fingers -->
+      <g stroke="#16a085" stroke-width="1.5" fill="none">
+        <path d="M 80  455 V 540"/>
+        <path d="M 120 455 V 540"/>
+        <path d="M 160 455 V 540"/>
+        <path d="M 200 455 V 540"/>
+        <path d="M 240 455 V 540"/>
+      </g>
+
+      <!-- Servo hand -->
+      <g transform="translate(60,540)">
+        <text x="115" y="-8" text-anchor="middle" class="note">5-finger servo hand</text>
+        <rect width="230" height="80" rx="10" fill="#f0c39a" stroke="#bf8a5d" stroke-width="1.5"/>
+        <!-- Fingers extending up -->
+        <g fill="#f0c39a" stroke="#bf8a5d" stroke-width="1">
+          <rect x="15"  y="-26" width="22" height="34" rx="5"/>
+          <rect x="55"  y="-44" width="22" height="52" rx="5"/>
+          <rect x="95"  y="-50" width="22" height="58" rx="5"/>
+          <rect x="135" y="-44" width="22" height="52" rx="5"/>
+          <rect x="175" y="-26" width="22" height="34" rx="5"/>
+        </g>
+        <g class="pin" fill="#6e4923">
+          <text x="26"  y="-36" text-anchor="middle">thumb</text>
+          <text x="66"  y="-54" text-anchor="middle">index</text>
+          <text x="106" y="-60" text-anchor="middle">middle</text>
+          <text x="146" y="-54" text-anchor="middle">ring</text>
+          <text x="186" y="-36" text-anchor="middle">pinky</text>
+        </g>
+        <g class="pin-bold">
+          <text x="26"  y="50" text-anchor="middle" fill="#16a085">CH 0</text>
+          <text x="66"  y="50" text-anchor="middle" fill="#16a085">CH 1</text>
+          <text x="106" y="50" text-anchor="middle" fill="#16a085">CH 2</text>
+          <text x="146" y="50" text-anchor="middle" fill="#16a085">CH 3</text>
+          <text x="186" y="50" text-anchor="middle" fill="#16a085">CH 4</text>
+        </g>
+      </g>
+
+      <!-- Gesture → angles mini-cheatsheet -->
+      <line x1="20" y1="700" x2="330" y2="700" stroke="#ecdbb1"/>
+      <text x="20" y="722" class="label-bold">Gesture → servo angles (example)</text>
+      <g class="pin" font-size="10.5">
+        <text x="20"  y="746">rest</text>   <text x="120" y="746" fill="#16a085">180 · 180 · 180 · 180 · 180</text>
+        <text x="20"  y="764">fist</text>   <text x="120" y="764" fill="#16a085">  0 ·   0 ·   0 ·   0 ·   0</text>
+        <text x="20"  y="782">pinch</text>  <text x="120" y="782" fill="#16a085">  0 ·   0 · 180 · 180 · 180</text>
+        <text x="20"  y="800">point</text>  <text x="120" y="800" fill="#16a085">180 ·   0 · 180 · 180 · 180</text>
+        <text x="20"  y="818">open</text>   <text x="120" y="818" fill="#16a085">180 · 180 · 180 · 180 · 180</text>
+      </g>
+    </g>
+
+  </svg>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div><span class="swatch" style="background:#c0392b"></span>3.3 V power</div>
+    <div><span class="swatch" style="background:#34495e"></span>Ground</div>
+    <div><span class="swatch" style="background:#d35400"></span>CH 1 · flexor signal</div>
+    <div><span class="swatch" style="background:#2980b9"></span>CH 2 · extensor signal</div>
+    <div><span class="swatch dashed" style="border-top-color:#95a5a6"></span>Leads-off (digital)</div>
+    <div><span class="swatch dashed" style="border-top-color:#27ae60"></span>WiFi (UDP)</div>
+    <div><span class="swatch" style="background:#8e44ad"></span>I²C</div>
+    <div><span class="swatch" style="background:#16a085"></span>PWM (servo)</div>
+  </div>
+
+  <!-- Pin connection tables -->
+  <div class="pintable">
+    <div>
+      <p class="label-bold">AD8232 #1 (flexor) → ESP32</p>
+      <table>
+        <thead><tr><th>AD8232 pin</th><th>ESP32 pin</th><th>Signal</th></tr></thead>
+        <tbody>
+          <tr><td><code>3.3V</code></td><td><code>3V3</code></td><td>power</td></tr>
+          <tr><td><code>GND</code></td><td><code>GND</code></td><td>ground</td></tr>
+          <tr><td><code>OUTPUT</code></td><td><code>GPIO 34</code></td><td>analog (flexor)</td></tr>
+          <tr><td><code>LO+</code></td><td><code>GPIO 25</code></td><td>leads-off (+)</td></tr>
+          <tr><td><code>LO−</code></td><td><code>GPIO 27</code></td><td>leads-off (−)</td></tr>
+          <tr><td><code>RA</code></td><td>—</td><td>flexor electrode +</td></tr>
+          <tr><td><code>LA</code></td><td>—</td><td>flexor electrode −</td></tr>
+          <tr><td><code>RL</code></td><td>—</td><td>reference (shared with #2)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <p class="label-bold">AD8232 #2 (extensor) → ESP32</p>
+      <table>
+        <thead><tr><th>AD8232 pin</th><th>ESP32 pin</th><th>Signal</th></tr></thead>
+        <tbody>
+          <tr><td><code>3.3V</code></td><td><code>3V3</code></td><td>power (shared)</td></tr>
+          <tr><td><code>GND</code></td><td><code>GND</code></td><td>ground (shared)</td></tr>
+          <tr><td><code>OUTPUT</code></td><td><code>GPIO 35</code></td><td>analog (extensor)</td></tr>
+          <tr><td><code>LO+</code></td><td><code>GPIO 26</code></td><td>leads-off (+)</td></tr>
+          <tr><td><code>LO−</code></td><td><code>GPIO 32</code></td><td>leads-off (−)</td></tr>
+          <tr><td><code>RA</code></td><td>—</td><td>extensor electrode +</td></tr>
+          <tr><td><code>LA</code></td><td>—</td><td>extensor electrode −</td></tr>
+          <tr><td><code>RL</code></td><td>—</td><td>reference (same electrode as #1)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="warning">
+    <strong>⚠ Servo power:</strong> Drive the PCA9685's <code>V+</code> from a <em>separate</em> 5–6 V supply (e.g. UBEC, bench PSU, or fresh 4× AA pack), with its GND tied to the Pi's GND. Do <em>not</em> power servos from the Pi's 5 V rail — typical hobby-servo stall current (~1 A each, ×5) will brown out the Pi and risk corrupting the SD card.
+  </div>
+
+  <p class="meta">
+    Pin assignments mirror <code>esp32_emg_streamer.ino</code> (the active dual-channel UDP firmware).
+    Edit it (or this diagram) in lockstep if you reassign pins. Sampling: 1 kHz × 2 ch, packet size 48 bytes.
+  </p>
+
+</div>
+</body>
+</html>

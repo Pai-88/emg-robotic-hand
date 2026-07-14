@@ -1,0 +1,396 @@
+\documentclass[10pt, a4paper]{article}
+
+% ============================================================
+%  PACKAGES
+% ============================================================
+\usepackage[a4paper, margin=2cm, top=2.2cm, bottom=2.2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{microtype}
+
+% ============================================================
+%  COLOURS
+% ============================================================
+\definecolor{ink}{HTML}{2C3E50}
+\definecolor{muted}{HTML}{7F8C8D}
+\definecolor{accent}{HTML}{C0392B}
+\definecolor{codebg}{HTML}{F5EDD6}
+\definecolor{codetext}{HTML}{2C3E50}
+\definecolor{linktext}{HTML}{2980B9}
+\definecolor{ok}{HTML}{16A085}
+\definecolor{warn}{HTML}{D68910}
+
+% ============================================================
+%  HYPERREF
+% ============================================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linktext,
+  urlcolor=linktext,
+  pdftitle={EMG Robotic Hand - Start Here},
+  pdfauthor={Project guide},
+}
+
+% ============================================================
+%  TITLE FORMATTING
+% ============================================================
+\titleformat{\section}[block]
+  {\Large\bfseries\color{ink}}{\thesection}{0.6em}{}
+\titleformat{\subsection}[block]
+  {\large\bfseries\color{ink}}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{18pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{5pt}
+
+% ============================================================
+%  LISTINGS
+% ============================================================
+\lstdefinestyle{code}{
+  backgroundcolor=\color{codebg!55},
+  basicstyle=\ttfamily\small\color{codetext},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=leftline,
+  framerule=2pt,
+  rulecolor=\color{accent!50},
+  xleftmargin=14pt,
+  framexleftmargin=14pt,
+  framexrightmargin=0pt,
+  framextopmargin=4pt,
+  framexbottommargin=4pt,
+  aboveskip=10pt,
+  belowskip=10pt,
+  showstringspaces=false,
+}
+\lstset{style=code}
+
+\setlist{itemsep=4pt, topsep=4pt, parsep=0pt, leftmargin=22pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{muted}EMG Robotic Hand $\cdot$ Start Here}
+\fancyhead[R]{\small\color{muted}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newtcolorbox{warningbox}{
+  colback=accent!8, colframe=accent,
+  leftrule=3pt, toprule=0pt, rightrule=0pt, bottomrule=0pt,
+  arc=2pt, boxrule=0pt,
+  left=10pt, right=10pt, top=8pt, bottom=8pt,
+}
+\newtcolorbox{okbox}{
+  colback=ok!8, colframe=ok,
+  leftrule=3pt, toprule=0pt, rightrule=0pt, bottomrule=0pt,
+  arc=2pt, boxrule=0pt,
+  left=10pt, right=10pt, top=8pt, bottom=8pt,
+}
+
+\begin{document}
+
+% ============================================================
+\thispagestyle{empty}
+\begin{flushleft}
+  {\fontsize{30pt}{34pt}\selectfont\bfseries\color{ink}EMG Robotic Hand}\\[4pt]
+  {\Large\color{muted}Start Here}\\[10pt]
+  {\color{muted}\rule{\linewidth}{0.4pt}}\\[10pt]
+  {\small\color{muted}Build guide: wearable EMG/ECG sensor $\rightarrow$ Raspberry Pi 5 inference $\rightarrow$ live web dashboard \& force-aware 5-finger robotic hand. With 3 fingertip FSRs for adaptive grip.}
+\end{flushleft}
+\vspace{12pt}
+
+A wearable EMG $\rightarrow$ 5-finger robotic hand with \textbf{force-aware grip} (won't crush an egg) plus a live ECG / vital-signs dashboard. One ESP32 streams biosignals + fingertip force readings wirelessly to a Pi 5; the Pi runs gesture inference, drives the servos, and serves a real-time dashboard.
+
+% ============================================================
+\section*{Folder layout}
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{codetext}]
+emg_hand/
+|-- START_HERE.md / .tex / .pdf       (this guide)
+|-- EMG_Hand_Presentation.pptx        8-slide deck for the demo
+|-- build_presentation.js             pptxgenjs source — `node build_presentation.js` rebuilds .pptx
+|-- demo_video_script.md              60-s shoot script + 26-shot list + editing notes
+|
+|-- firmware/
+|   `-- esp32_emg_streamer/
+|       `-- esp32_emg_streamer.ino    2-ch EMG + 3-FSR streaming firmware (54-byte UDP packets)
+|
+|-- pi/                               everything that runs on the Pi
+|   |-- emg_common.py                 packet parser, EMG filter, 1D-CNN, normaliser
+|   |-- ecg_processing.py             R-peak detection, HR, HRV, respiration
+|   |-- record_gestures.py            record labelled EMG gesture data
+|   |-- train_gestures.py             train the 1D-CNN classifier
+|   |-- predict_realtime.py           live inference + force-aware HandController
+|   |-- dashboard_server.py           FastAPI + WebSocket — runs ECG + EMG + gesture inference
+|   |-- dashboard.html                browser UI (current-gesture, confidence bars, force gauges,
+|   |                                              EMG waveform, ECG, HR/HRV/RR tachogram)
+|   `-- servo_calibrate.py            interactive servo calibration REPL
+|
+`-- docs/                             open in any browser
+    |-- parts_and_setup.html          BOM + physical layout
+    |-- electronics_setup.html        full pin-level wiring
+    |-- pi_servo_wiring.html          Pi 5 <-> PCA9685 <-> servos
+    `-- wearable_design.html          3D-printable forearm pod design
+\end{lstlisting}
+
+% ============================================================
+\section*{What it does}
+
+\begin{itemize}
+  \item \textbf{Wearable} (forearm-mounted): ESP32 + 2$\times$ AD8232 + 3 fingertip FSR-402 force sensors. Streams 2-ch EMG at 1\,kHz \emph{and} 3-ch fingertip force at 100\,Hz over WiFi UDP in 54-byte packets.
+  \item \textbf{Pi 5} receives that stream and runs:
+  \begin{itemize}
+    \item \textbf{Force-aware gesture control} — 1D CNN classifies the EMG window into one of five gestures (rest / fist / open / pinch / point), then the HandController steps each servo toward the target pose. \textbf{A finger stops closing the moment its FSR reading exceeds the per-finger threshold} — that's the egg-grip behaviour.
+    \item \textbf{Live web dashboard} at \texttt{http://<pi-ip>:8000/} showing current gesture, classifier confidence bars, fingertip force gauges, 2-channel EMG waveform, plus ECG / HR / HRV / respiration / RR tachogram.
+  \end{itemize}
+  \item The dashboard server and \texttt{predict\_realtime.py} both bind UDP \texttt{:5555} --- only one at a time per ESP32.
+\end{itemize}
+
+% ============================================================
+\section*{Quick start}
+
+\subsection*{Step 0 --- Read the visual references}
+
+Open these in a browser before wiring (double-click the .html):
+
+\begin{enumerate}
+  \item \texttt{docs/parts\_and\_setup.html} --- BOM (6 component types, 11 units, $\sim$\textsterling 75 to source).
+  \item \texttt{docs/electronics\_setup.html} --- pin-level wiring of ESP32 + AD8232.
+  \item \texttt{docs/pi\_servo\_wiring.html} --- Pi 5 to PCA9685 to servos.
+  \item \texttt{docs/wearable\_design.html} --- 3D-printable forearm pod (optional).
+  \item \texttt{EMG\_Hand\_Presentation.pptx} --- the demo deck (8 slides, 5-min slot).
+  \item \texttt{demo\_video\_script.md} --- 60-second demo-video script + shot list.
+\end{enumerate}
+
+\subsection*{Step 1 --- Flash the ESP32}
+
+\begin{enumerate}
+  \item Install Arduino IDE 2.x + ESP32 board support (\texttt{Boards Manager} $\rightarrow$ \texttt{esp32}).
+  \item Open \texttt{firmware/esp32\_emg\_streamer/esp32\_emg\_streamer.ino}.
+  \item Edit the network details at the top:
+\begin{lstlisting}
+const char* WIFI_SSID     = "<your-network>";
+const char* WIFI_PASSWORD = "<your-password>";
+const char* PI_IP         = "<your-pi-ip>";   // `hostname -I` on the Pi
+\end{lstlisting}
+  \item If FSRs aren't physically wired yet, also set \texttt{FSR\_ENABLED = false} (sends zeros, doesn't crash).
+  \item Select board \textbf{ESP32 Dev Module} + correct port, upload.
+  \item Open Serial Monitor at \textbf{115200 baud}. Expect:
+\begin{lstlisting}
+UDP ready -> <pi-ip>:5555
+[5s] Pkts:498 | Smp:5000 | Rate:1000Hz | LO1:OK LO2:OK | FSR T/I/M:   45/  38/  52 | WiFi:OK (-52)
+\end{lstlisting}
+\end{enumerate}
+
+\subsection*{Step 2 --- Wire the analog frontend + FSRs}
+
+Follow \texttt{docs/electronics\_setup.html} Panel B2.
+
+\vspace{4pt}
+\noindent\textbf{AD8232 modules} $\rightarrow$ ESP32
+\begin{tabular}{@{}llll@{}}
+\toprule
+\multicolumn{2}{l}{\textbf{AD8232 \#1 (CH1)}} & \multicolumn{2}{l}{\textbf{AD8232 \#2 (CH2)}} \\
+\midrule
+\texttt{3.3V}   & $\rightarrow$ \texttt{3V3}      & \texttt{3.3V}   & $\rightarrow$ \texttt{3V3}        \\
+\texttt{GND}    & $\rightarrow$ \texttt{GND}      & \texttt{GND}    & $\rightarrow$ \texttt{GND}        \\
+\texttt{OUTPUT} & $\rightarrow$ \texttt{GPIO 34}  & \texttt{OUTPUT} & $\rightarrow$ \texttt{GPIO 35}    \\
+\texttt{LO+}    & $\rightarrow$ \texttt{GPIO 25}  & \texttt{LO+}    & $\rightarrow$ \texttt{GPIO 26}    \\
+\texttt{LO$-$}  & $\rightarrow$ \texttt{GPIO 27}  & \texttt{LO$-$}  & \emph{unused (pin freed)}         \\
+\bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{Fingertip FSR-402 force sensors} (voltage divider to GND)
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Sensor index} & \textbf{ADC pin} & \textbf{Channel notes} \\
+\midrule
+FSR thumb  (\texttt{fsr[0]})  & \texttt{GPIO 33} & ADC1\_CH5 \\
+FSR index  (\texttt{fsr[1]})  & \texttt{GPIO 36} & ADC1\_CH0 (input-only pin) \\
+FSR middle (\texttt{fsr[2]})  & \texttt{GPIO 39} & ADC1\_CH3 (input-only pin) \\
+\bottomrule
+\end{tabularx}
+
+\vspace{6pt}
+\noindent Per FSR: \texttt{3V3 $\rightarrow$ FSR $\rightarrow$ ADC pin $\rightarrow$ 10\,k$\Omega$ $\rightarrow$ GND}. No force $\rightarrow$ ADC $\approx 0$. Hard squeeze $\rightarrow$ ADC $\geq 3500$.
+
+\vspace{4pt}
+Both AD8232 \texttt{RL} pins go to a single shared reference electrode (bony spot --- olecranon or ulnar styloid).
+
+\subsection*{Step 3 --- Set up the Pi}
+
+\begin{lstlisting}
+# Copy this project onto the Pi at ~/Documents/emg_hand
+cd ~/Documents/emg_hand/pi
+
+# Use a venv (Pi OS Bookworm is externally-managed)
+python3 -m venv ~/emg-venv
+source ~/emg-venv/bin/activate
+pip install -U pip
+pip install numpy scipy torch scikit-learn fastapi 'uvicorn[standard]'
+
+# Only needed if you'll drive the robotic hand:
+sudo raspi-config       # Interface Options > I2C > Enable, then reboot
+pip install adafruit-circuitpython-servokit
+\end{lstlisting}
+
+\subsection*{Step 4 --- Verify the data link}
+
+With the ESP32 powered and electrodes attached:
+
+\begin{lstlisting}
+# On the Pi
+sudo tcpdump -i any -n udp port 5555 -c 5
+\end{lstlisting}
+
+You should see 5 packets received within a second --- each is \textbf{54 bytes}. If silent, \texttt{PI\_IP} in the .ino is wrong, or your network isolates clients (most university / hotel guest WiFi does --- use a phone hotspot).
+
+% ============================================================
+\section*{Step 5 --- Pick a mode}
+
+\subsection*{Mode A --- Live ECG / vital-signs dashboard}
+
+\begin{enumerate}
+  \item \textbf{Re-wire AD8232 \#1 to chest} (Lead I): RA $\rightarrow$ upper-right chest, LA $\rightarrow$ upper-left, RL $\rightarrow$ right hip.
+  \item \textbf{Run the server}:
+\begin{lstlisting}
+source ~/emg-venv/bin/activate
+cd ~/Documents/emg_hand/pi
+python dashboard_server.py
+\end{lstlisting}
+  \item \textbf{Open} \texttt{http://<pi-ip>:8000/} in any browser. Within $\sim$10\,s of stable contact you should see HR, HRV, the ECG waveform, and the RR-interval tachogram updating live.
+\end{enumerate}
+
+\subsection*{Mode B --- Force-aware gesture control + robotic hand}
+
+This is the demo path. Six small stages.
+
+\paragraph{Stage 1 --- electrodes on forearm.}
+CH1 pair over flexor digitorum (palmar, $\sim$1/3 down from elbow), CH2 pair over extensor digitorum (dorsal), shared reference on the olecranon.
+
+\paragraph{Stage 2 --- record training data.}
+\begin{lstlisting}
+cd ~/Documents/emg_hand/pi
+python record_gestures.py --reps 3 --duration 5
+\end{lstlisting}
+Walks through each gesture for 5 s $\times$ 3 reps. Saves \texttt{gestures.npz}.
+
+\paragraph{Stage 3 --- train the model.}
+\begin{lstlisting}
+python train_gestures.py --epochs 80
+\end{lstlisting}
+Prints test accuracy + confusion matrix. Saves \texttt{emg\_model.pth} + \texttt{emg\_norm.npz}.
+
+\paragraph{Stage 4 --- glue FSRs to fingertips, set thresholds.}
+Wire the FSRs (Step 2). Run \texttt{servo\_calibrate.py} while squeezing each FSR pad to find raw readings at rest ($\sim 50$) and at hard squeeze ($\sim 3500$). Open \texttt{predict\_realtime.py} and tune:
+\begin{lstlisting}
+FORCE_THRESHOLD = [1800, 1800, 1800]   # thumb, index, middle
+\end{lstlisting}
+Match the same numbers in \texttt{dashboard\_server.py} \texttt{FORCE\_THRESHOLDS} so the gauge tick lines up.
+
+\paragraph{Stage 5 --- calibrate the servos.}
+\begin{lstlisting}
+python servo_calibrate.py
+\end{lstlisting}
+Interactive REPL --- find the angles for ``fully open'' / ``fully closed'' per finger, save snapshots, then paste the result dict into \texttt{HandController.GESTURE\_ANGLES} in \texttt{predict\_realtime.py}.
+
+\paragraph{Stage 6 --- run live inference.}
+\begin{lstlisting}
+python predict_realtime.py
+\end{lstlisting}
+Without a PCA9685 connected: prints gesture + servo angles to terminal (force-blocking events printed too). With one connected: drives the servo hand. The closing direction is force-blocked per finger.
+
+% ============================================================
+\section*{\texttt{servo\_calibrate.py} quick reference}
+
+\begin{lstlisting}
+> 1 45               # set channel 1 (index) to 45 deg
+> s 0                # sweep channel 0 (thumb) 0 -> 180 -> 0
+> s all              # sweep all 5 sequentially
+> open               # all servos -> 180 deg
+> close              # all servos -> 0 deg
+> rest               # all servos -> 90 deg (safe centre)
+> snap fist          # save current pose as 'fist'
+> snap pinch         # save current pose as 'pinch'
+> show               # prints GESTURE_ANGLES dict to paste into predict_realtime.py
+> q                  # quit (leaves servos where they are)
+\end{lstlisting}
+
+% ============================================================
+\section*{Demo prep --- slide deck + video}
+
+\begin{itemize}
+  \item \texttt{EMG\_Hand\_Presentation.pptx} --- 8-slide deck sized for a 5-minute slot with 4 presenters. Three things to fill in: team-name placeholders (slide 1), a photo of the wearable + hand (slide 4), and your real confusion-matrix numbers (slide 7). To rebuild after edits: \texttt{node build\_presentation.js}.
+  \item \texttt{demo\_video\_script.md} --- 60-second demo-video script + 26-shot list + equipment checklist + editing notes. The signature sequence is Beat 3 (egg-grip moment), 28 seconds out of 60. Plan for $\geq 3$ takes of the egg pickup.
+\end{itemize}
+
+\begin{okbox}
+\textbf{Why the egg-grip is the headline:} every other student team's robotic hand either crushes things or isn't strong enough. Yours stops at exactly the right moment, and the dashboard makes the closed loop \emph{visible} --- the audience watches the force gauge cross the threshold tick, sees the bar turn red, and sees the hand halt. That single visual is worth more than any number on a results slide.
+\end{okbox}
+
+% ============================================================
+\section*{Troubleshooting}
+
+\begin{tabularx}{\linewidth}{p{5.5cm}X}
+\toprule
+\textbf{Symptom} & \textbf{Likely cause} \\
+\midrule
+ESP32 stuck on \texttt{Connecting...} & WiFi credentials wrong, or hotspot not broadcasting. Check from your phone. \\
+\addlinespace
+\texttt{tcpdump} silent on the Pi & \texttt{PI\_IP} wrong, or guest network isolates clients. Use a phone hotspot. \\
+\addlinespace
+Flat / dead EMG signal & $\sim$90\% of the time it's electrode contact. Clean skin with alcohol, abrade lightly, re-stick. Orange LO LED on AD8232 confirms a lead is off. \\
+\addlinespace
+FSR readings stuck near 0 with no force applied & Voltage divider not built, or 10 k$\Omega$ resistor missing. ADC reads a floating pin as noise around 0 / drifting. \\
+\addlinespace
+FSR readings stuck near 4095 (saturated) & FSR shorted, or wired without divider. The ADC sees 3.3 V directly. \\
+\addlinespace
+Hand crushes the egg every take & Lower \texttt{FORCE\_THRESHOLD} by 200 in \texttt{predict\_realtime.py}; recalibrate. \\
+\addlinespace
+Hand stops too early, never grasps & Raise \texttt{FORCE\_THRESHOLD}; check the FSR is actually contacting at full close. \\
+\addlinespace
+Dashboard shows \texttt{--} for HR forever & Need $\geq 2$ R-peaks. Improve electrode placement, lower \texttt{RMS\_GATE}, or wait 30 s for filter warm-up. \\
+\addlinespace
+Gesture panel says ``no model loaded'' & Run \texttt{record\_gestures.py} + \texttt{train\_gestures.py} first; \texttt{emg\_model.pth} + \texttt{emg\_norm.npz} must be next to \texttt{dashboard\_server.py}. \\
+\addlinespace
+Gesture model collapses to one class & StandardScaler leakage or class imbalance. Re-record with longer rest and more reps, then retrain. \\
+\addlinespace
+Servos jitter / don't respond & Forgot to tie PSU GND to Pi GND --- the most common build mistake. See \texttt{pi\_servo\_wiring.html}. \\
+\addlinespace
+\texttt{i2cdetect -y 1} doesn't show \texttt{0x40} & I\textsuperscript{2}C not enabled (\texttt{raspi-config}), SDA/SCL swapped, or PCA9685 missing its 3.3 V supply. \\
+\addlinespace
+\texttt{predict\_realtime.py} ``print-only mode'' & \texttt{adafruit-servokit} not installed in the active venv. \texttt{pip install adafruit-circuitpython-servokit}. \\
+\bottomrule
+\end{tabularx}
+
+\begin{warningbox}
+\textbf{Single most common build mistake:} servo PSU ground not tied to Pi ground. Without a common ground the PWM logic levels float and servos either don't move or twitch unpredictably.
+\end{warningbox}
+
+% ============================================================
+\section*{What's next}
+
+If the demo lands and you want to keep going past the competition, the realistic upgrades --- each modular, each $\leq 1$ weekend:
+
+\begin{itemize}
+  \item \textbf{MAX30102} ($\sim$\textsterling 5, I\textsuperscript{2}C) --- SpO\textsubscript{2} + PPG + optical HR cross-check. Add a dashboard panel.
+  \item \textbf{MPU6050} ($\sim$\textsterling 3, I\textsuperscript{2}C) --- wrist orientation, activity classification, gesture disambiguation.
+  \item \textbf{NTC thermistor} ($\sim$\textsterling 1) --- skin temperature trend.
+  \item \textbf{Custom PCB} --- consolidates ESP32 + 2$\times$ AD8232 onto one board, eliminates the breadboard, looks like a product.
+  \item \textbf{Pre-train on Ninapro DB2}, fine-tune on your own data --- cross-subject robustness.
+  \item \textbf{1D Transformer comparison} --- adds an architectural ablation to your results slide. Likely loses to the CNN at this data scale, which is itself a finding.
+\end{itemize}
+
+For \emph{real} EEG you'd need an ADS1299-class front-end (OpenBCI Ganglion or Cyton). The AD8232 isn't built for scalp-microvolt recordings.
+
+\end{document}

@@ -1,0 +1,90 @@
+ERC report (2026-07-10T22:51:49, Encoding UTF8)
+Report includes: Errors, Warnings
+
+***** Sheet /
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(30.48 mm, 40.64 mm): Symbol J3 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(45.72 mm, 177.80 mm): Symbol J10 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(55.88 mm, 43.18 mm): Symbol C1 [Cap]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(60.96 mm, 180.34 mm): Symbol R1 [Res]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(71.12 mm, 238.76 mm): Symbol A1 [RPi5]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(78.74 mm, 40.64 mm): Symbol U4 [AMS1117]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(99.06 mm, 177.80 mm): Symbol J11 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(104.14 mm, 43.18 mm): Symbol C2 [Cap]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(116.84 mm, 180.34 mm): Symbol R2 [Res]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(149.86 mm, 109.22 mm): Symbol U1 [ESP32]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(154.94 mm, 177.80 mm): Symbol J12 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(160.02 mm, 238.76 mm): Symbol U5 [PCA9685]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(170.18 mm, 180.34 mm): Symbol R3 [Res]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(231.14 mm, 30.48 mm): Symbol C3 [Cap]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(231.14 mm, 127.00 mm): Symbol C4 [Cap]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(236.22 mm, 210.82 mm): Symbol J4 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(236.22 mm, 243.84 mm): Symbol J5 [Conn3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(261.62 mm, 213.36 mm): Symbol C5 [Cap]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(269.24 mm, 50.80 mm): Symbol U2 [AD8232]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(269.24 mm, 149.86 mm): Symbol U3 [AD8232]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(269.24 mm, 243.84 mm): Symbol J6 [Conn3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(302.26 mm, 243.84 mm): Symbol J7 [Conn3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(337.82 mm, 243.84 mm): Symbol J8 [Conn3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(360.68 mm, 50.80 mm): Symbol J1 [Conn3]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(360.68 mm, 149.86 mm): Symbol J2 [Conn2]
+[lib_symbol_issues]: The current configuration does not include the symbol library 'emg'
+    ; warning
+    @(370.84 mm, 243.84 mm): Symbol J9 [Conn3]
+
+ ** ERC messages: 26  Errors 0  Warnings 26
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters
