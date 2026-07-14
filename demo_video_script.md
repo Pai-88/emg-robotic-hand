@@ -110,9 +110,9 @@ For each gesture: ~3 seconds. Use this pattern: **hand action → cut to dashboa
 | Time | Shot | What happens | Text overlay |
 |---|---|---|---|
 | 0:50 | **S24** — fade to black for 0.5 s, then large white text on black: `£30,000` | hold 1.5 s | `£30,000  ·  Commercial myoelectric hand` (subtitle below, smaller) |
-| 0:52 | text cross-dissolves to: `£150` | hold 2 s | `£150  ·  Our build` (in accent colour) |
+| 0:52 | text cross-dissolves to: `£150` | hold 2 s | `£150  ·  This build` (in accent colour) |
 | 0:54 | **S25** — quick recap montage: 3 × 1-second clips: dashboard / egg pickup / wearable | montage |   |
-| 0:57 | **S26** — final freeze frame: robotic hand at rest, egg intact in front of it, dashboard visible in the background | hold 3 s | `ACCESSIBLE PROSTHETICS  ·  BUILT TODAY` (centred, large) + team / institution in small text bottom |
+| 0:57 | **S26** — final freeze frame: robotic hand at rest, egg intact in front of it, dashboard visible in the background | hold 3 s | `ACCESSIBLE PROSTHETICS  ·  BUILT TODAY` (centred, large) + name / institution in small text bottom |
 | 1:00 | END · fade to black |   |   |
 
 ---
@@ -151,7 +151,7 @@ Print this and tape it to your monitor while filming.
 
 **Software** — pick one:
 - **CapCut** (free, mobile + desktop) — fast for first-time editors. Built-in text overlays. Great for cuts on beat. Recommended.
-- **DaVinci Resolve** (free, desktop) — pro-grade. Better for precise colour correction + smooth motion. Use if a teammate has experience.
+- **DaVinci Resolve** (free, desktop) — pro-grade. Better for precise colour correction + smooth motion. Use if you have colour-grading experience.
 - **iMovie** (Mac, free) — fine, but limited multi-track. Last resort.
 
 **Music** — instrumental, ~80 BPM, builds gently. Try:
@@ -221,7 +221,7 @@ Print this and tape it to your monitor while filming.
 - [ ] All text overlays readable at 720p (assume the projector is bad)
 - [ ] Exported as H.264 `.mp4`, 1080p, ~10 Mb/s
 - [ ] Watched it back **twice** with audio + once muted (will the presenter's narration fit?)
-- [ ] Backed up to USB + cloud + a teammate's laptop. Murphy *will* show up.
+- [ ] Backed up to USB + cloud + a second machine. Murphy *will* show up.
 - [ ] Embedded into slide 6 of `EMG_Hand_Presentation.pptx`, autoplay disabled (presenter controls playback)
 
 When all 8 are ticked: you've shipped.

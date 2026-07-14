@@ -3,7 +3,7 @@
 > By end of today: EMG waveform on the dashboard when you flex.
 > No FSRs. No robotic hand. Just: **skin → ESP32 → WiFi → Pi → browser**.
 
-If any step fails, **stop and ping back** — fixing a wiring/flash issue takes me 2 min from a screenshot; chasing it solo can burn an hour.
+If any step fails, **stop and debug from the last checkpoint** — a wiring/flash issue is usually a 2-minute fix once you can see it in a photo or the serial log; pushing on blind can burn an hour.
 
 ---
 
@@ -59,7 +59,7 @@ Reference: open `docs/electronics_setup.html` Panel B2 — that's your wiring ch
 
 ✅ **Done when:** every connection double-checked against the diagram. No bare wires touching each other. The breadboard looks tidy, not like a haystack.
 
-📸 **Photograph the wiring before you flash.** Lets me debug from a distance.
+📸 **Photograph the wiring before you flash.** A clear photo makes a bad connection obvious later.
 
 ---
 
@@ -152,20 +152,20 @@ All of that is correct for Step 4.
 
 📸 **Screenshot the dashboard with both channels firing.**
 
-That's your Day 1 ship moment. Send the screenshot to me + your team + celebrate it. The hard part is done — everything downstream is just extension.
+That's the Day 1 ship moment. Save the screenshot and celebrate it. The hard part is done — everything downstream is just extension.
 
 ---
 
-## Stuck? Send me this
+## Stuck? Collect this
 
-If anything in any step doesn't behave like the ✅ line says it should, paste me:
+If anything in any step doesn't behave like the ✅ line says it should, collect:
 
 1. **Serial Monitor's last 10 lines** (from Step 2)
 2. **A photo of the wiring**
 3. **A screenshot of the dashboard** (if it loaded at all)
 4. **The exact command that failed + its output**
 
-Usually that's enough to spot the issue from 4000 miles away. Don't burn an hour solo — ping back fast.
+Usually that's enough to spot the issue quickly. Don't burn an hour guessing — work from the evidence.
 
 ---
 

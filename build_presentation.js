@@ -27,7 +27,7 @@ const FONT = "Calibri";
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE"; // 13.3 × 7.5
 pres.title = "Low-Cost Myoelectric Hand Control";
-pres.author = "UCL BME Team";
+pres.author = "Paing Hein Htet";
 
 const SW = 13.3, SH = 7.5;
 
@@ -113,10 +113,10 @@ const total = 8;
     align: "left", margin: 0,
   });
 
-  // Team line
+  // Author line
   s.addText([
-    { text: "Team   ", options: { color: C.muted, bold: false } },
-    { text: "[Member 1]    [Member 2]    [Member 3]    [Member 4]", options: { color: C.white } },
+    { text: "Author   ", options: { color: C.muted, bold: false } },
+    { text: "Paing Hein Htet", options: { color: C.white } },
   ], {
     x: 0.8, y: 5.7, w: 11.5, h: 0.4,
     fontSize: 14, fontFace: FONT, align: "left", margin: 0,
