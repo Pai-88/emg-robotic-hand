@@ -190,13 +190,13 @@ Print this and tape it to your monitor while filming.
 - **Don't trust the first egg take.** Always do at least 3 takes of the full pickup sequence.
 
 **Common mistakes to avoid:**
-- ❌ Shooting handheld (camera shake destroys macro shots). **Always use a tripod or stable surface.**
-- ❌ Filming against a window (backlit = silhouettes). Plain wall or paper backdrop.
-- ❌ Voiceover layered with presenter narration. **Silent + text + music only.**
-- ❌ Music with vocals. Distracts from the live narration.
-- ❌ More than 26 cuts. Restraint reads as confidence; over-editing reads as nervousness.
-- ❌ Letting the egg take longer than 28 s. If you can't cut it down, your egg sequence is overshot.
-- ❌ Forgetting to back up the raw footage to a second drive **before** opening the edit.
+- Shooting handheld (camera shake destroys macro shots). **Always use a tripod or stable surface.**
+- Filming against a window (backlit = silhouettes). Plain wall or paper backdrop.
+- Voiceover layered with presenter narration. **Silent + text + music only.**
+- Music with vocals. Distracts from the live narration.
+- More than 26 cuts. Restraint reads as confidence; over-editing reads as nervousness.
+- Letting the egg take longer than 28 s. If you can't cut it down, your egg sequence is overshot.
+- Forgetting to back up the raw footage to a second drive **before** opening the edit.
 
 ---
 

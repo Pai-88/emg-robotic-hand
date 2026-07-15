@@ -29,7 +29,7 @@ If any step fails, **stop and debug from the last checkpoint** — a wiring/flas
 - [ ] 1× **5 V / 5 A DC mains adapter** with barrel jack
 - [ ] 1× pack of **10 kΩ resistors** (for FSR voltage dividers — a £3 starter pack of 100 is overkill but fine)
 
-✅ **Done when:** inventory list ticked + Amazon receipt timestamped.
+**Done when:** inventory list ticked + Amazon receipt timestamped.
 
 ---
 
@@ -57,9 +57,9 @@ Reference: open `docs/electronics_setup.html` Panel B2 — that's your wiring ch
 | `LO+` | `GPIO 26` |
 | `LO-` | _leave open_ (will be repurposed for FSR thumb on Step 5+) |
 
-✅ **Done when:** every connection double-checked against the diagram. No bare wires touching each other. The breadboard looks tidy, not like a haystack.
+**Done when:** every connection double-checked against the diagram. No bare wires touching each other. The breadboard looks tidy, not like a haystack.
 
-📸 **Photograph the wiring before you flash.** A clear photo makes a bad connection obvious later.
+**Photograph the wiring before you flash.** A clear photo makes a bad connection obvious later.
 
 ---
 
@@ -78,7 +78,7 @@ Reference: open `docs/electronics_setup.html` Panel B2 — that's your wiring ch
 5. Upload (takes ~30–60 s)
 6. **Tools → Serial Monitor** → 115200 baud
 
-✅ **Done when:** you see this in Serial Monitor:
+**Done when:** you see this in Serial Monitor:
 ```
 UDP ready → <your-pi-ip>:5555
 [5s] Pkts:500 | Smp:5000 | Rate:1000Hz | LO1:OFF LO2:OFF | FSR T/I/M: 0/0/0 | WiFi:OK (-50)
@@ -109,7 +109,7 @@ sudo tcpdump -i any -n udp port 5555 -c 5
 #   → should print 5 packet lines within ~1 second
 ```
 
-✅ **Done when:** `tcpdump` prints 5 UDP packets from the ESP32's IP.
+**Done when:** `tcpdump` prints 5 UDP packets from the ESP32's IP.
 
 If silent: `PI_IP` in the .ino is wrong, *or* your network blocks client-to-client traffic. Most university/hotel WiFi does this — **switch to a phone hotspot** for development, it always works.
 
@@ -125,7 +125,7 @@ python dashboard_server.py
 
 Open `http://<pi-ip>:8000/` from any browser (laptop, phone, the Pi itself).
 
-✅ **Done when:** dashboard loads, the green dot in the top-right is pulsing, footer shows "ESP32 streaming". You'll see:
+**Done when:** dashboard loads, the green dot in the top-right is pulsing, footer shows "ESP32 streaming". You'll see:
 - EMG / ECG waveform panels (flat — electrodes not on skin yet)
 - Force gauges at 0 (no FSRs yet)
 - Confidence bars panel says "no model loaded" (haven't trained yet)
@@ -135,7 +135,7 @@ All of that is correct for Step 4.
 
 ---
 
-## STEP 5 · First EMG signal — the moment (20 min)
+## STEP 5 · First EMG signal (20 min)
 
 **Electrode placement** (right forearm, palm down):
 
@@ -148,17 +148,17 @@ All of that is correct for Step 4.
 2. Press the electrodes firmly for 5 s each to activate the gel
 3. Plug the 3.5 mm jacks into the AD8232 boards
 
-✅ **Done when:** on the dashboard EMG panel, **make a fist → the orange (CH1) trace jumps and oscillates**. Open hand and **the cyan (CH2) trace jumps**. Resting → both nearly flat.
+**Done when:** on the dashboard EMG panel, **make a fist → the orange (CH1) trace jumps and oscillates**. Open hand and **the cyan (CH2) trace jumps**. Resting → both nearly flat.
 
-📸 **Screenshot the dashboard with both channels firing.**
+**Screenshot the dashboard with both channels firing.**
 
-That's the Day 1 ship moment. Save the screenshot and celebrate it. The hard part is done — everything downstream is just extension.
+Save the screenshot. The core acquisition pipeline works from here; everything downstream builds on it.
 
 ---
 
 ## Stuck? Collect this
 
-If anything in any step doesn't behave like the ✅ line says it should, collect:
+If anything in any step doesn't behave like the line says it should, collect:
 
 1. **Serial Monitor's last 10 lines** (from Step 2)
 2. **A photo of the wiring**
@@ -167,8 +167,3 @@ If anything in any step doesn't behave like the ✅ line says it should, collect
 
 Usually that's enough to spot the issue quickly. Don't burn an hour guessing — work from the evidence.
 
----
-
-## When Day 1 ships
-
-You'll feel the urge to keep going into Day 2 immediately. **Sleep instead.** The recording session on Day 3 needs you sharp, not exhausted. Day 1 ending with a working signal at midnight is much better than Day 2 starting with a broken pipeline at 3 a.m.
