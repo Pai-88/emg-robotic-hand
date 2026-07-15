@@ -41,10 +41,10 @@ emg_hand/
 - **Wearable** (forearm-mounted): ESP32 + 2× AD8232 sample 2 biosignal
   channels at 1 kHz and stream binary UDP packets to the Pi over WiFi.
 - **Pi 5** receives that stream and runs one of two modes:
-  - **Gesture-control mode** — 1D CNN classifies the EMG window into one of
+  - **Gesture-control mode**: 1D CNN classifies the EMG window into one of
     five gestures (rest / fist / open / pinch / point) and drives a 5-finger
     servo hand through a PCA9685 over I²C.
-  - **ECG-dashboard mode** — treats CH1 as Lead-I ECG, detects R-peaks,
+  - **ECG-dashboard mode**: treats CH1 as Lead-I ECG, detects R-peaks,
     computes HR / HRV / respiration, and serves a live web dashboard at
     `http://<pi-ip>:8000/`.
 - The two modes share UDP :5555 — only one runs at a time per session.
