@@ -20,6 +20,6 @@ kicad/.history/
 _autosave-*
 fp-info-cache
 
-# Node build deps for the presentation
 node_modules/
 package-lock.json
+~$*

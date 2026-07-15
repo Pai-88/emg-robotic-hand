@@ -116,8 +116,6 @@ A wearable EMG $\rightarrow$ 5-finger robotic hand with \textbf{force-aware grip
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{codetext}]
 emg_hand/
 |-- START_HERE.md / .tex / .pdf       (this guide)
-|-- EMG_Hand_Presentation.pptx        8-slide deck for the demo
-|-- build_presentation.js             pptxgenjs source — `node build_presentation.js` rebuilds .pptx
 |
 |-- firmware/
 |   `-- esp32_emg_streamer/
@@ -166,8 +164,6 @@ Open these in a browser before wiring (double-click the .html):
   \item \texttt{docs/electronics\_setup.html} --- pin-level wiring of ESP32 + AD8232.
   \item \texttt{docs/pi\_servo\_wiring.html} --- Pi 5 to PCA9685 to servos.
   \item \texttt{docs/wearable\_design.html} --- 3D-printable forearm pod (optional).
-  \item \texttt{EMG\_Hand\_Presentation.pptx} --- the demo deck (8 slides, 5-min slot).
-  \item \texttt{demo\_video\_script.md} --- 60-second demo-video script + shot list.
 \end{enumerate}
 
 \subsection*{Step 1 --- Flash the ESP32}
@@ -326,13 +322,6 @@ Without a PCA9685 connected: prints gesture + servo angles to terminal (force-bl
 \end{lstlisting}
 
 % ============================================================
-\section*{Demo prep --- slide deck + video}
-
-\begin{itemize}
-  \item \texttt{EMG\_Hand\_Presentation.pptx} --- 8-slide deck sized for a 5-minute slot. Two things to fill in: a photo of the wearable + hand (slide 4), and your real confusion-matrix numbers (slide 7). To rebuild after edits: \texttt{node build\_presentation.js}.
-  \item \texttt{demo\_video\_script.md} --- 60-second demo-video script + 26-shot list + equipment checklist + editing notes. The signature sequence is Beat 3 (egg-grip moment), 28 seconds out of 60. Plan for $\geq 3$ takes of the egg pickup.
-\end{itemize}
-
 \begin{okbox}
 \textbf{Why the egg-grip is the headline:} most low-cost robotic hands either crush things or aren't strong enough. Yours stops at exactly the right moment, and the dashboard makes the closed loop \emph{visible} --- the audience watches the force gauge cross the threshold tick, sees the bar turn red, and sees the hand halt. That single visual is worth more than any number on a results slide.
 \end{okbox}
